@@ -1,0 +1,52 @@
+spring:
+  application:
+    name: Synamyk
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/synamyk}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+server:
+  port: 8080
+
+finik:
+  api-key: ${FINIK_API_KEY:your-api-key}
+  account-id: ${FINIK_ACCOUNT_ID:your-account-id}
+  base-url: ${FINIK_BASE_URL:https://api.acquiring.averspay.kg}
+  private-key-path: ${FINIK_PRIVATE_KEY_PATH:classpath:finik_private.pem}
+  webhook-url: ${APP_BASE_URL:https://your-domain.com}/api/webhooks/finik
+
+jwt:
+  secret: ${JWT_SECRET:SynamykSuperSecretKeyForJwtTokenGenerationMinimum256BitsLong}
+  expiration: ${JWT_EXPIRATION:86400000}
+
+sms:
+  smspro:
+    enabled: ${SMS_ENABLED:true}
+    url: ${SMSPRO_URL:https://smspro.nikita.kg/api/message}
+    login: ${SMSPRO_LOGIN:Cholpon123456}
+    password: ${SMSPRO_PASSWORD:6EX5vJf8}
+    sender: ${SMSPRO_SENDER:Synamyk}
+    ttl-minutes: ${SMSPRO_TTL:5}
+
+anthropic:
+  api-key: ${ANTHROPIC_API_KEY:your-anthropic-api-key}
+  base-url: https://api.anthropic.com
+
+logging:
+  level:
+    synamyk: DEBUG
+    org.springframework.security: WARN
