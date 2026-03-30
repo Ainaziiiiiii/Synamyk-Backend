@@ -87,7 +87,7 @@ public class  AuthController {
     @PostMapping("/send-otp")
     @Operation(
             summary = "Отправить OTP-код",
-            description = "Отправляет 4-значный код через SMSPRO. " +
+            description = "Отправляет 4-значный код " +
                     "Доступные типы: `REGISTRATION`, `PASSWORD_RESET`. " +
                     "Повторная отправка возможна только после истечения предыдущего кода."
     )

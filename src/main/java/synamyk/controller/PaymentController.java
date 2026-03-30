@@ -28,7 +28,7 @@ public class PaymentController {
      * Create a Finik payment to unlock all paid sub-tests of a test.
      */
     @PostMapping("/create")
-    @Operation(summary = "Create payment to unlock paid sub-tests")
+    @Operation(summary = "Провести оплату")
     public ResponseEntity<CreatePaymentResponse> createPayment(
             @Valid @RequestBody CreatePaymentRequest request,
             Authentication authentication) {
@@ -52,7 +52,7 @@ public class PaymentController {
      * Check payment status by paymentId.
      */
     @GetMapping("/{paymentId}")
-    @Operation(summary = "Check payment status")
+    @Operation(summary = "Проверка статуса платежа")
     public ResponseEntity<CreatePaymentResponse> getPaymentStatus(@PathVariable String paymentId) {
         return ResponseEntity.ok(paymentService.getPaymentStatus(UUID.fromString(paymentId)));
     }

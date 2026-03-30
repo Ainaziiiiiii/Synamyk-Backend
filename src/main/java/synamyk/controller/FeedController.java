@@ -69,7 +69,7 @@ public class FeedController {
     @GetMapping("/news/{id}")
     @Operation(
             summary = "Полная новостная статья",
-            description = "Возвращает полный текст новостной статьи по её ID."
+            description = "Возвращает полный текст новостной статьи по ее ID."
     )
     @ApiResponse(responseCode = "200", description = "Полная статья")
     public ResponseEntity<NewsDetailResponse> getNewsDetail(

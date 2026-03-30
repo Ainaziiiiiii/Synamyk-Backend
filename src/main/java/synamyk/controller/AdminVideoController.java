@@ -15,7 +15,7 @@ import synamyk.service.AnalyticsService;
 @RestController
 @RequestMapping("/api/admin/videos")
 @RequiredArgsConstructor
-@Tag(name = "Админ — Видеоуроки", description = "Управление видеоуроками. Видео хранятся как YouTube-ссылки. Требуется роль ADMIN.")
+@Tag(name = "Админ — Видеоуроки", description = "Управление видеоуроками. Видео хранятся как YouTube-ссылки. Требуется роль ADMIN")
 @SecurityRequirement(name = "Bearer")
 public class AdminVideoController {
 
@@ -23,7 +23,7 @@ public class AdminVideoController {
 
     @PostMapping
     @Operation(summary = "Создать видеоурок",
-            description = "Поле `videoUrl` — ссылка на YouTube. Превью загружается через POST /api/upload (тип VIDEO_THUMBNAIL).")
+            description = "Поле `videoUrl` — ссылка на YouTube. Превью загружается через POST /api/upload (тип VIDEO_THUMBNAIL)")
     public ResponseEntity<VideoLessonResponse> create(@Valid @RequestBody CreateVideoLessonRequest request) {
         return ResponseEntity.ok(analyticsService.createVideo(request));
     }

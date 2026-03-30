@@ -22,8 +22,7 @@ public class AdminFeedController {
     private final NewsService newsService;
 
     @PostMapping
-    @Operation(summary = "Создать новостную статью",
-            description = "Поля `titleKy` и `contentKy` необязательны — если указаны, статья будет отображаться на кыргызском языке.")
+    @Operation(summary = "Создать новостную статью")
     public ResponseEntity<NewsDetailResponse> create(@Valid @RequestBody CreateNewsRequest request) {
         return ResponseEntity.ok(newsService.createNews(request));
     }
@@ -37,7 +36,7 @@ public class AdminFeedController {
     }
 
     @DeleteMapping("/{id}")
-    @Operation(summary = "Деактивировать (скрыть) новостную статью", description = "Мягкое удаление: статья скрывается из ленты пользователей.")
+    @Operation(summary = "Деактивировать (скрыть) новостную статью", description = "Мягкое удаление: статья скрывается из ленты пользователей")
     public ResponseEntity<Void> delete(@Parameter(description = "ID новости") @PathVariable Long id) {
         newsService.deleteNews(id);
         return ResponseEntity.noContent().build();

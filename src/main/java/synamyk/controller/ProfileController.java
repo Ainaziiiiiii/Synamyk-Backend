@@ -129,8 +129,8 @@ public class ProfileController {
     @DeleteMapping
     @Operation(
             summary = "Удалить аккаунт",
-            description = "Мягкое удаление аккаунта: устанавливает `active = false`. " +
-                    "Пользователь больше не сможет войти — Spring Security вернёт 401. " +
+            description = "удаление аккаунта " +
+                    "Пользователь больше не сможет войти " +
                     "Данные сохраняются в базе для истории."
     )
     @ApiResponse(responseCode = "200", description = "Аккаунт удалён")

@@ -43,8 +43,8 @@ public class AdminTestController {
     @PostMapping("/tests")
     @Operation(
             summary = "Создать новый тест",
-            description = "Создаёт тест. Укажите `title` (RU обязательно) и `titleKy` (KY опционально). " +
-                    "Иконка загружается через POST /api/upload и URL передаётся в поле `iconUrl`."
+            description = "Создает тест. Укажите `title` (RU) и `titleKy` (KY). " +
+                    "Иконка загружается через POST /api/upload и URL передаётся в поле iconUrl"
     )
     public ResponseEntity<AdminTestResponse> createTest(@Valid @RequestBody CreateTestRequest request) {
         return ResponseEntity.ok(adminTestService.createTest(request));
@@ -59,7 +59,7 @@ public class AdminTestController {
     }
 
     @DeleteMapping("/tests/{testId}")
-    @Operation(summary = "Деактивировать тест", description = "Мягкое удаление: тест скрывается из списка пользователей.")
+    @Operation(summary = "Деактивировать тест", description = "Мягкое удаление: тест скрывается из списка пользователей")
     @ApiResponse(responseCode = "204", description = "Тест деактивирован")
     public ResponseEntity<Void> deleteTest(
             @Parameter(description = "ID теста") @PathVariable Long testId) {
@@ -70,9 +70,9 @@ public class AdminTestController {
     @PutMapping("/tests/{testId}/pricing")
     @Operation(
             summary = "Настроить цену и платные подтесты",
-            description = "Устанавливает цену теста и указывает, какие подтесты являются платными. " +
-                    "Все подтесты этого теста, НЕ вошедшие в `paidSubTestIds`, становятся бесплатными. " +
-                    "Одна оплата даёт доступ ко всем платным подтестам этого теста."
+            description = "Устанавливает цену теста и указывает, какие подтесты являются платными " +
+                    "Все подтесты этого теста, НЕ вошедшие в `paidSubTestIds`, становятся бесплатными " +
+                    "Одна оплата даёт доступ ко всем платным подтестам этого теста"
     )
     public ResponseEntity<AdminTestResponse> updateTestPricing(
             @Parameter(description = "ID теста") @PathVariable Long testId,
@@ -85,9 +85,9 @@ public class AdminTestController {
     @PostMapping("/tests/{testId}/sub-tests")
     @Operation(
             summary = "Добавить подтест к тесту",
-            description = "Создаёт подтест (уровень) внутри теста. " +
+            description = "Создает подтест (уровень) внутри теста " +
                     "`levelOrder` определяет порядок отображения (меньше = выше). " +
-                    "`durationMinutes` — время на прохождение в минутах."
+                    "`durationMinutes` — время на прохождение в минутах"
     )
     public ResponseEntity<AdminTestResponse.AdminSubTestResponse> createSubTest(
             @Parameter(description = "ID теста") @PathVariable Long testId,
@@ -115,7 +115,7 @@ public class AdminTestController {
     // ===== ВОПРОСЫ =====
 
     @GetMapping("/sub-tests/{subTestId}/questions")
-    @Operation(summary = "Список вопросов подтеста", description = "Возвращает все вопросы (включая неактивные) с вариантами ответов.")
+    @Operation(summary = "Список вопросов подтеста", description = "Возвращает все вопросы (включая неактивные) с вариантами ответов")
     public ResponseEntity<List<AdminQuestionResponse>> getQuestions(
             @Parameter(description = "ID подтеста") @PathVariable Long subTestId) {
         return ResponseEntity.ok(adminTestService.getQuestions(subTestId));
@@ -124,9 +124,8 @@ public class AdminTestController {
     @PostMapping("/sub-tests/{subTestId}/questions")
     @Operation(
             summary = "Добавить вопрос к подтесту",
-            description = "Создаёт вопрос с вариантами ответа (2–6 штук). " +
-                    "**Ровно один** вариант должен иметь `isCorrect = true`. " +
-                    "Укажите `textKy` и `textKy` для вариантов для поддержки кыргызского языка."
+            description = "Создает вопрос с вариантами ответа (2–6 штук) " +
+                    "**Ровно один** вариант должен иметь `isCorrect = true` "
     )
     public ResponseEntity<AdminQuestionResponse> createQuestion(
             @Parameter(description = "ID подтеста") @PathVariable Long subTestId,
@@ -135,7 +134,7 @@ public class AdminTestController {
     }
 
     @PutMapping("/questions/{questionId}")
-    @Operation(summary = "Обновить вопрос", description = "Полностью заменяет вопрос и все варианты ответа.")
+    @Operation(summary = "Обновить вопрос", description = "Полностью заменяет вопрос и все варианты ответа")
     public ResponseEntity<AdminQuestionResponse> updateQuestion(
             @Parameter(description = "ID вопроса") @PathVariable Long questionId,
             @Valid @RequestBody CreateQuestionRequest request) {

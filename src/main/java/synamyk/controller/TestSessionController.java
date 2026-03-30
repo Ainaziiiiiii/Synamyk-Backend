@@ -30,7 +30,7 @@ public class TestSessionController {
     @PostMapping("/sub-tests/{subTestId}/start")
     @Operation(
             summary = "Начать или возобновить подтест",
-            description = "Создаёт новую сессию или возобновляет существующую (статус IN_PROGRESS или PAUSED). " +
+            description = "Создает новую сессию или возобновляет существующую (статус IN_PROGRESS или PAUSED). " +
                     "Таймер не сбрасывается при возобновлении — используется абсолютное время истечения. " +
                     "В ответе возвращается `currentIndex` — с какого вопроса продолжать."
     )
@@ -156,7 +156,7 @@ public class TestSessionController {
 
     @GetMapping("/sessions/{sessionId}/result")
     @Operation(
-            summary = "Получить результат завершённой сессии",
+            summary = "Получить результат завершенной сессии",
             description = "Возвращает сохранённый результат сессии. " +
                     "Используется для повторного просмотра результата без повторного завершения."
     )
@@ -175,7 +175,7 @@ public class TestSessionController {
     @PostMapping("/sessions/{sessionId}/analyze-errors")
     @Operation(
             summary = "ИИ-разбор неправильных ответов",
-            description = "Отправляет выбранные неправильные ответы в Claude API (claude-opus-4-6) для объяснения ошибок. " +
+            description = "Отправляет выбранные неправильные ответы в ИИ для объяснения ошибок. " +
                     "Передайте список `questionIds` вопросов, которые нужно разобрать. " +
                     "Возвращает пояснение для каждого вопроса от ИИ."
     )

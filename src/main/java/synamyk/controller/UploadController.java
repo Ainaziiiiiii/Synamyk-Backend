@@ -41,7 +41,7 @@ public class UploadController {
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(
             summary = "Загрузить изображение",
-            description = "Загружает изображение (до 10 МБ, только image/*) в MinIO и возвращает постоянный публичный URL.\n\n" +
+            description = "Загружает изображение в бакет и возвращает URL.\n\n" +
                     "**Типы и пути хранения:**\n\n" +
                     "| type | Куда сохранять URL |\n" +
                     "|------|-------------------|\n" +
