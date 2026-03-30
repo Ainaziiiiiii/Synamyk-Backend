@@ -10,58 +10,45 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import synamyk.entities.User;
 import synamyk.enums.MediaFileType;
-import synamyk.repo.UserRepository;
 import synamyk.service.MinioService;
 
 @RestController
 @RequestMapping("/api/upload")
 @RequiredArgsConstructor
-@Tag(name = "Загрузка файлов", description = "Загрузка изображений в MinIO. Возвращает публичный URL для сохранения в полях avatarUrl / coverImageUrl / thumbnailUrl.")
+@Tag(name = "Загрузка файлов", description = "Загрузка изображений. Возвращает публичный URL для сохранения в нужное поле.")
 @SecurityRequirement(name = "Bearer")
 public class UploadController {
 
     private final MinioService minioService;
-    private final UserRepository userRepository;
 
-    /**
-     * POST /api/upload
-     * Uploads an image and returns its permanent public URL.
-     *
-     * type values:
-     *   AVATAR           — profile avatar (use userId as entityId)
-     *   NEWS_COVER       — news article cover (use newsId or "new")
-     *   VIDEO_THUMBNAIL  — video lesson thumbnail (use videoId or "new")
-     *
-     * The returned URL is stored directly in avatarUrl / coverImageUrl / thumbnailUrl fields.
-     */
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(
             summary = "Загрузить изображение",
-            description = "Загружает изображение в бакет и возвращает URL.\n\n" +
-                    "**Типы и пути хранения:**\n\n" +
-                    "| type | Куда сохранять URL |\n" +
-                    "|------|-------------------|\n" +
-                    "| `AVATAR` | `PUT /api/profile` → `avatarUrl` |\n" +
-                    "| `NEWS_COVER` | `POST/PUT /api/admin/news` → `coverImageUrl` |\n" +
-                    "| `VIDEO_THUMBNAIL` | `POST/PUT /api/admin/videos` → `thumbnailUrl` |\n\n" +
-                    "Для `AVATAR` поле `entityId` подставляется автоматически."
+            description = """
+                    Загружает изображение и возвращает публичный URL.
+
+                    | type | Куда вставлять URL |
+                    |------|--------------------|
+                    | `AVATAR` | `PUT /api/profile` → `avatarUrl` |
+                    | `NEWS_COVER` | `POST/PUT /api/admin/news` → `coverImageUrl` |
+                    | `VIDEO_THUMBNAIL` | `POST/PUT /api/admin/videos` → `thumbnailUrl` |
+                    | `TEST_ICON` | `POST/PUT /api/admin/tests` → `iconUrl` |
+                    | `QUESTION_IMAGE` | `POST/PUT /api/admin/sub-tests/{id}/questions` → `imageUrl` |
+                    """
     )
     public ResponseEntity<UploadResponse> upload(
-            @AuthenticationPrincipal UserDetails userDetails,
+            @AuthenticationPrincipal User user,
             @RequestPart("file") MultipartFile file,
-            @Parameter(description = "Тип файла: AVATAR, NEWS_COVER, VIDEO_THUMBNAIL") @RequestParam MediaFileType type,
-            @Parameter(description = "ID сущности (для AVATAR не нужен — берётся автоматически)") @RequestParam(defaultValue = "general") String entityId) {
+            @Parameter(description = "Тип: AVATAR, NEWS_COVER, VIDEO_THUMBNAIL, TEST_ICON, QUESTION_IMAGE")
+            @RequestParam MediaFileType type) {
 
-        // For AVATAR, default entityId to the current user's id
-        if (type == MediaFileType.AVATAR) {
-            Long userId = userRepository.findByPhone(userDetails.getUsername())
-                    .orElseThrow(() -> new RuntimeException("User not found")).getId();
-            entityId = String.valueOf(userId);
-        }
+        String entityId = (type == MediaFileType.AVATAR)
+                ? String.valueOf(user.getId())
+                : "general";
 
         String url = minioService.upload(file, type, entityId);
         return ResponseEntity.ok(UploadResponse.builder().url(url).build());
@@ -70,7 +57,6 @@ public class UploadController {
     @Data
     @Builder
     static class UploadResponse {
-        /** Permanent public URL — store this directly in avatarUrl / coverImageUrl / thumbnailUrl. */
         private String url;
     }
 }

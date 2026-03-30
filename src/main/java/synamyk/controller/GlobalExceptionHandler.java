@@ -1,8 +1,11 @@
 package synamyk.controller;
 
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.core.Authentication;
@@ -49,6 +52,28 @@ public class GlobalExceptionHandler {
                 ? "Аккаунт өчүрүлгөн же номер тастыкталган жок."
                 : "Аккаунт отключён или номер не подтверждён.";
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new MessageResponse(false, message));
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<MessageResponse> handleUnreadable(HttpMessageNotReadableException ex, HttpServletRequest request) {
+        String lang = resolveLang(request);
+        Throwable cause = ex.getCause();
+
+        String message;
+        if (cause instanceof JsonParseException) {
+            message = "KY".equalsIgnoreCase(lang)
+                    ? "JSON форматы туура эмес. Текст ичиндеги саптарды \\n менен алмаштырыңыз."
+                    : "Неверный формат JSON. Переносы строк в тексте заменяйте на \\n.";
+        } else if (cause instanceof InvalidFormatException ife) {
+            message = "KY".equalsIgnoreCase(lang)
+                    ? "Жарамсыз маани: " + ife.getValue()
+                    : "Неверное значение: " + ife.getValue();
+        } else {
+            message = "KY".equalsIgnoreCase(lang)
+                    ? "Сурам денеси окулган жок."
+                    : "Тело запроса не удалось прочитать.";
+        }
+        return ResponseEntity.badRequest().body(new MessageResponse(false, message));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

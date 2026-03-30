@@ -49,6 +49,7 @@ anthropic:
 
 minio:
   url: ${AWS_ENDPOINT_URL}
+  public-url: ${MINIO_PUBLIC_URL:${AWS_ENDPOINT_URL}}
   access-key: ${AWS_ACCESS_KEY_ID}
   secret-key: ${AWS_SECRET_ACCESS_KEY}
   bucket: ${AWS_S3_BUCKET_NAME}

@@ -24,6 +24,9 @@ public class MinioService {
     @Value("${minio.url}")
     private String minioUrl;
 
+    @Value("${minio.public-url:${minio.url}}")
+    private String publicUrl;
+
     /**
      * On startup: create bucket if missing and set public-read policy
      * so avatars, covers, and thumbnails are directly accessible by URL.
@@ -98,15 +101,17 @@ public class MinioService {
 
     private String buildKey(MediaFileType type, String entityId, String ext) {
         String folder = switch (type) {
-            case AVATAR -> "avatars/" + entityId;
-            case NEWS_COVER -> "news/" + entityId;
-            case VIDEO_THUMBNAIL -> "thumbnails/" + entityId;
+            case AVATAR          -> "avatars/" + entityId;
+            case NEWS_COVER      -> "news";
+            case VIDEO_THUMBNAIL -> "thumbnails";
+            case TEST_ICON       -> "tests";
+            case QUESTION_IMAGE  -> "questions";
         };
         return folder + "/" + UUID.randomUUID() + ext;
     }
 
     private String buildPublicUrl(String objectKey) {
-        String base = minioUrl.endsWith("/") ? minioUrl : minioUrl + "/";
+        String base = publicUrl.endsWith("/") ? publicUrl : publicUrl + "/";
         return base + bucket + "/" + objectKey;
     }
 

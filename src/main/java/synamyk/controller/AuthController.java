@@ -55,8 +55,10 @@ public class  AuthController {
             @ApiResponse(responseCode = "200", description = "Код верифицирован"),
             @ApiResponse(responseCode = "400", description = "Неверный или истёкший код")
     })
-    public ResponseEntity<OtpVerifyResponse> verifyOtp(@Valid @RequestBody VerifyOtpRequest request) {
-        return ResponseEntity.ok(smsProService.verifyOtp(request));
+    public ResponseEntity<OtpVerifyResponse> verifyOtp(
+            @Valid @RequestBody VerifyOtpRequest request,
+            @RequestParam(defaultValue = "RU") String lang) {
+        return ResponseEntity.ok(smsProService.verifyOtp(request, lang));
     }
 
     @PostMapping("/complete-profile")
@@ -95,8 +97,9 @@ public class  AuthController {
     public ResponseEntity<OtpSendResponse> sendOtp(
             @Parameter(description = "Номер телефона") @RequestParam String phone,
             @Parameter(description = "Тип OTP: REGISTRATION или PASSWORD_RESET")
-            @RequestParam(defaultValue = "PASSWORD_RESET") String type) {
-        return ResponseEntity.ok(smsProService.sendOtp(phone, OTPCode.OtpType.valueOf(type)));
+            @RequestParam(defaultValue = "PASSWORD_RESET") String type,
+            @Parameter(description = "Язык ответа: RU или KY") @RequestParam(defaultValue = "RU") String lang) {
+        return ResponseEntity.ok(smsProService.sendOtp(phone, OTPCode.OtpType.valueOf(type), lang));
     }
 
     @PostMapping("/resend-otp")
@@ -108,8 +111,9 @@ public class  AuthController {
     @ApiResponse(responseCode = "200", description = "Новый код отправлен")
     public ResponseEntity<OtpSendResponse> resendOtp(
             @Parameter(description = "Номер телефона") @RequestParam String phone,
-            @Parameter(description = "Тип OTP: REGISTRATION или PASSWORD_RESET") @RequestParam String type) {
-        return ResponseEntity.ok(smsProService.resendOtp(phone, OTPCode.OtpType.valueOf(type)));
+            @Parameter(description = "Тип OTP: REGISTRATION или PASSWORD_RESET") @RequestParam String type,
+            @Parameter(description = "Язык ответа: RU или KY") @RequestParam(defaultValue = "RU") String lang) {
+        return ResponseEntity.ok(smsProService.resendOtp(phone, OTPCode.OtpType.valueOf(type), lang));
     }
 
     @PostMapping("/reset-password")
@@ -122,9 +126,14 @@ public class  AuthController {
             @ApiResponse(responseCode = "200", description = "Пароль успешно сброшен"),
             @ApiResponse(responseCode = "400", description = "OTP не верифицирован, уже использован или истёк")
     })
-    public ResponseEntity<MessageResponse> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+    public ResponseEntity<MessageResponse> resetPassword(
+            @Valid @RequestBody ResetPasswordRequest request,
+            @RequestParam(defaultValue = "RU") String lang) {
         authService.resetPassword(request);
-        return ResponseEntity.ok(new MessageResponse(true, "Пароль успешно сброшен."));
+        String msg = "KY".equalsIgnoreCase(lang)
+                ? "Сырсөз ийгиликтүү өзгөртүлдү."
+                : "Пароль успешно сброшен.";
+        return ResponseEntity.ok(new MessageResponse(true, msg));
     }
 
     @PostMapping("/refresh")
@@ -149,11 +158,14 @@ public class  AuthController {
                     "Access-токен продолжает работать до истечения срока действия (TTL)."
     )
     @ApiResponse(responseCode = "200", description = "Выход выполнен, все refresh-токены отозваны")
-    public ResponseEntity<MessageResponse> logout(@AuthenticationPrincipal UserDetails userDetails) {
-        Long userId = userRepository.findByPhone(userDetails.getUsername())
-                .orElseThrow(() -> new RuntimeException("Пользователь не найден."))
-                .getId();
-        authService.logout(userId);
-        return ResponseEntity.ok(new MessageResponse(true, "Выход выполнен."));
+    public ResponseEntity<MessageResponse> logout(
+            @AuthenticationPrincipal UserDetails userDetails) {
+        synamyk.entities.User user = (synamyk.entities.User) userDetails;
+        authService.logout(user.getId());
+        String lang = user.getLanguage();
+        String msg = "KY".equalsIgnoreCase(lang)
+                ? "Чыгуу аткарылды."
+                : "Выход выполнен.";
+        return ResponseEntity.ok(new MessageResponse(true, msg));
     }
 }

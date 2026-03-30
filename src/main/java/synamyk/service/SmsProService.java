@@ -12,6 +12,7 @@ import synamyk.dto.OtpVerifyResponse;
 import synamyk.dto.VerifyOtpRequest;
 import synamyk.entities.OTPCode;
 import synamyk.entities.User;
+import synamyk.exception.AppException;
 import synamyk.repo.OtpCodeRepository;
 import synamyk.repo.UserRepository;
 
@@ -48,6 +49,11 @@ public class SmsProService {
 
     @Transactional
     public OtpSendResponse sendOtp(String phone, OTPCode.OtpType type) {
+        return sendOtp(phone, type, "RU");
+    }
+
+    @Transactional
+    public OtpSendResponse sendOtp(String phone, OTPCode.OtpType type, String lang) {
         log.info("Sending OTP to phone: {} for type: {}", phone, type);
 
         String formattedPhone = formatPhoneNumber(phone);
@@ -59,13 +65,15 @@ public class SmsProService {
                 .ifPresent(existingOtp -> {
                     if (!existingOtp.isExpired()) {
                         log.warn("Active OTP already exists for phone: {}", formattedPhone);
-                        throw new RuntimeException("OTP already sent. Please wait before requesting a new code.");
+                        throw new AppException(
+                                "OTP уже отправлен. Подождите перед повторным запросом.",
+                                "OTP жөнөтүлдү. Жаңы код суроодон мурун күтүңүз.");
                     }
                 });
 
         if (!enabled) {
             log.warn("SMS sending DISABLED. Test mode. OTP: {}", otpCode);
-            return createTestOtp(formattedPhone, messageId, type, otpCode);
+            return createTestOtp(formattedPhone, messageId, type, otpCode, lang);
         }
 
         try {
@@ -107,7 +115,9 @@ public class SmsProService {
             if (status == null || status != 0) {
                 String errorMessage = getSmsErrorMessage(status, message);
                 log.error("SMS API error: {}", errorMessage);
-                throw new RuntimeException(errorMessage);
+                throw new AppException(
+                        "Ошибка отправки SMS: " + errorMessage,
+                        "SMS жөнөтүүдө ката: " + errorMessage);
             }
 
             OTPCode otpCodeEntity = OTPCode.builder()
@@ -122,23 +132,36 @@ public class SmsProService {
             otpCodeEntity = otpCodeRepository.save(otpCodeEntity);
             log.info("OTP saved with id: {}", otpCodeEntity.getId());
 
+            String sentMsg = ky(lang)
+                    ? "Код ийгиликтүү жөнөтүлдү."
+                    : "Код успешно отправлен.";
+
             return OtpSendResponse.builder()
                     .success(true)
                     .phone(formattedPhone)
                     .transactionId(messageId)
                     .token(messageId)
                     .expiresAt(otpCodeEntity.getExpiresAt())
-                    .message("OTP sent successfully.")
+                    .message(sentMsg)
                     .build();
 
+        } catch (AppException e) {
+            throw e;
         } catch (Exception e) {
             log.error("Error sending OTP to {}: {}", phone, e.getMessage(), e);
-            throw new RuntimeException("Failed to send OTP: " + e.getMessage());
+            throw new AppException(
+                    "Не удалось отправить SMS. Попробуйте позже.",
+                    "SMS жөнөтүү мүмкүн болгон жок. Кийинчерээк аракет кылыңыз.");
         }
     }
 
     @Transactional
     public OtpVerifyResponse verifyOtp(VerifyOtpRequest request) {
+        return verifyOtp(request, "RU");
+    }
+
+    @Transactional
+    public OtpVerifyResponse verifyOtp(VerifyOtpRequest request, String lang) {
         String formattedPhone = formatPhoneNumber(request.getPhone());
         log.info("Verifying OTP for phone: {}, type: {}", formattedPhone, request.getType());
 
@@ -146,7 +169,9 @@ public class SmsProService {
                 .findByPhoneAndTypeAndVerifiedFalseOrderByCreatedAtDesc(formattedPhone, request.getType());
 
         if (otpCodes.isEmpty()) {
-            throw new RuntimeException("OTP not found or already verified.");
+            throw new AppException(
+                    "OTP не найден или уже подтверждён.",
+                    "OTP табылган жок же мурунтан тастыкталган.");
         }
 
         OTPCode otpCode = otpCodes.get(0);
@@ -162,14 +187,16 @@ public class SmsProService {
 
         if (otpCode.isExpired()) {
             log.warn("OTP expired for phone: {}", formattedPhone);
-            throw new RuntimeException("The OTP has expired. Please request a new code.");
+            throw new AppException(
+                    "Срок действия кода истёк. Запросите новый.",
+                    "Код мөөнөтү өттү. Жаңы код суранычы.");
         }
 
         if (!otpCode.getCode().equals(request.getCode())) {
             log.warn("Invalid OTP code for phone: {}", formattedPhone);
             return OtpVerifyResponse.builder()
                     .success(false)
-                    .message("Invalid verification code.")
+                    .message(ky(lang) ? "Туура эмес код." : "Неверный код подтверждения.")
                     .build();
         }
 
@@ -178,7 +205,7 @@ public class SmsProService {
 
         if (otpCode.getType() == OTPCode.OtpType.REGISTRATION) {
             User user = userRepository.findByPhone(formattedPhone)
-                    .orElseThrow(() -> new RuntimeException("User not found."));
+                    .orElseThrow(() -> new AppException("Пользователь не найден.", "Колдонуучу табылган жок."));
             user.setPhoneVerified(true);
             otpCode.setUsed(true);
             otpCode.setUsedAt(LocalDateTime.now());
@@ -191,12 +218,17 @@ public class SmsProService {
         return OtpVerifyResponse.builder()
                 .success(true)
                 .phone(formattedPhone)
-                .message("OTP successfully verified.")
+                .message(ky(lang) ? "Код ийгиликтүү тастыкталды." : "Код успешно подтверждён.")
                 .build();
     }
 
     @Transactional
     public OtpSendResponse resendOtp(String phone, OTPCode.OtpType type) {
+        return resendOtp(phone, type, "RU");
+    }
+
+    @Transactional
+    public OtpSendResponse resendOtp(String phone, OTPCode.OtpType type, String lang) {
         String formattedPhone = formatPhoneNumber(phone);
         log.info("Resending OTP for phone: {}, type: {}", formattedPhone, type);
 
@@ -205,7 +237,7 @@ public class SmsProService {
             log.info("Deactivated {} old OTP codes for {}", deactivated, formattedPhone);
         }
 
-        return sendOtp(phone, type);
+        return sendOtp(phone, type, lang);
     }
 
     // ===== HELPER METHODS =====
@@ -232,7 +264,7 @@ public class SmsProService {
         return String.valueOf(code);
     }
 
-    private OtpSendResponse createTestOtp(String phone, String messageId, OTPCode.OtpType type, String testCode) {
+    private OtpSendResponse createTestOtp(String phone, String messageId, OTPCode.OtpType type, String testCode, String lang) {
         String testToken = "test_token_" + System.currentTimeMillis();
 
         OTPCode otpCode = OTPCode.builder()
@@ -247,14 +279,22 @@ public class SmsProService {
         otpCode = otpCodeRepository.save(otpCode);
         log.warn("TEST MODE - OTP code: {}", testCode);
 
+        String msg = ky(lang)
+                ? "Тест режими — код: " + testCode
+                : "Тестовый режим — код: " + testCode;
+
         return OtpSendResponse.builder()
                 .success(true)
                 .phone(phone)
                 .transactionId(messageId)
                 .token(testToken)
                 .expiresAt(otpCode.getExpiresAt())
-                .message("TEST MODE - OTP: " + testCode)
+                .message(msg)
                 .build();
+    }
+
+    private boolean ky(String lang) {
+        return "KY".equalsIgnoreCase(lang);
     }
 
     private Integer extractXmlIntValue(String xml, String tagName) {

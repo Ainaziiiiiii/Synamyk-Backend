@@ -22,14 +22,14 @@ public class OpenApiConfig {
                         .version("1.0.0")
                         .description("""
                                 ## Описание
-                                REST API для мобильного приложения **Synamyk** — подготовка к экзаменам (ОРТ и др.) в Кыргызстане.
+                                REST API для мобильного приложения **Synamyk** — подготовка к экзаменам (ОРТ)
 
                                 ## Авторизация
                                 Большинство эндпоинтов требуют JWT-токен в заголовке:
                                 ```
                                 Authorization: Bearer <token>
                                 ```
-                                Токен выдаётся при регистрации (`POST /api/auth/register`) и входе (`POST /api/auth/login`).
+                                Токен выдается при регистрации (`POST /api/auth/register`) и входе (`POST /api/auth/login`).
 
                                 ## Публичные эндпоинты (без JWT)
                                 - `POST /api/auth/**` — регистрация, вход, OTP, сброс пароля
@@ -45,10 +45,7 @@ public class OpenApiConfig {
                                 ## Роли
                                 - **USER** — обычный пользователь
                                 - **ADMIN** — доступ к `/api/admin/**`
-                                """)
-                        .contact(new Contact()
-                                .name("Synamyk")
-                                .email("support@synamyk.kg")))
+                                """))
                 .servers(List.of(
                         new Server().url("/").description("Текущий сервер")
                 ))
