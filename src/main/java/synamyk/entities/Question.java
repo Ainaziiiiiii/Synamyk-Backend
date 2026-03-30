@@ -30,8 +30,14 @@ public class Question extends BaseEntity {
     @Column
     private String sectionName;
 
+    @Column
+    private String sectionNameKy;
+
     @Column(nullable = false, columnDefinition = "TEXT")
     private String text;
+
+    @Column(columnDefinition = "TEXT")
+    private String textKy;
 
     @Column
     private String imageUrl;
@@ -41,6 +47,9 @@ public class Question extends BaseEntity {
      */
     @Column(columnDefinition = "TEXT")
     private String explanation;
+
+    @Column(columnDefinition = "TEXT")
+    private String explanationKy;
 
     @Column(nullable = false)
     private Integer orderIndex = 0;

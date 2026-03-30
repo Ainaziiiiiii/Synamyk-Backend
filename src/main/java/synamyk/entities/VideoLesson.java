@@ -20,8 +20,14 @@ public class VideoLesson extends BaseEntity {
     @Column(nullable = false, length = 500)
     private String title;
 
+    @Column(length = 500)
+    private String titleKy;
+
     @Column(columnDefinition = "TEXT")
     private String description;
+
+    @Column(columnDefinition = "TEXT")
+    private String descriptionKy;
 
     @Column(length = 1000)
     private String thumbnailUrl;

@@ -1,6 +1,9 @@
 package synamyk.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -14,110 +17,136 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/admin")
 @RequiredArgsConstructor
-@Tag(name = "Admin - Tests", description = "Admin endpoints for managing tests, sub-tests, questions")
+@Tag(name = "Админ — Тесты", description = "Управление тестами, подтестами и вопросами. Требуется роль ADMIN.")
+@SecurityRequirement(name = "Bearer")
 public class AdminTestController {
 
     private final AdminTestService adminTestService;
 
-    // ===== TESTS =====
+    // ===== ТЕСТЫ =====
 
     @GetMapping("/tests")
-    @Operation(summary = "Get all tests with sub-tests")
+    @Operation(summary = "Список всех тестов (включая неактивные)", description = "Возвращает все тесты со вложенными подтестами для панели администратора.")
+    @ApiResponse(responseCode = "200", description = "Список тестов")
     public ResponseEntity<List<AdminTestResponse>> getAllTests() {
         return ResponseEntity.ok(adminTestService.getAllTests());
     }
 
     @GetMapping("/tests/{testId}")
-    @Operation(summary = "Get single test")
-    public ResponseEntity<AdminTestResponse> getTest(@PathVariable Long testId) {
+    @Operation(summary = "Получить тест по ID")
+    @ApiResponse(responseCode = "200", description = "Тест с подтестами")
+    public ResponseEntity<AdminTestResponse> getTest(
+            @Parameter(description = "ID теста") @PathVariable Long testId) {
         return ResponseEntity.ok(adminTestService.getTest(testId));
     }
 
     @PostMapping("/tests")
-    @Operation(summary = "Create new test")
+    @Operation(
+            summary = "Создать новый тест",
+            description = "Создаёт тест. Укажите `title` (RU обязательно) и `titleKy` (KY опционально). " +
+                    "Иконка загружается через POST /api/upload и URL передаётся в поле `iconUrl`."
+    )
     public ResponseEntity<AdminTestResponse> createTest(@Valid @RequestBody CreateTestRequest request) {
         return ResponseEntity.ok(adminTestService.createTest(request));
     }
 
     @PutMapping("/tests/{testId}")
-    @Operation(summary = "Update test")
+    @Operation(summary = "Обновить тест")
     public ResponseEntity<AdminTestResponse> updateTest(
-            @PathVariable Long testId,
+            @Parameter(description = "ID теста") @PathVariable Long testId,
             @Valid @RequestBody CreateTestRequest request) {
         return ResponseEntity.ok(adminTestService.updateTest(testId, request));
     }
 
     @DeleteMapping("/tests/{testId}")
-    @Operation(summary = "Deactivate test")
-    public ResponseEntity<Void> deleteTest(@PathVariable Long testId) {
+    @Operation(summary = "Деактивировать тест", description = "Мягкое удаление: тест скрывается из списка пользователей.")
+    @ApiResponse(responseCode = "204", description = "Тест деактивирован")
+    public ResponseEntity<Void> deleteTest(
+            @Parameter(description = "ID теста") @PathVariable Long testId) {
         adminTestService.deleteTest(testId);
         return ResponseEntity.noContent().build();
     }
 
-    /**
-     * Admin selects which sub-tests are paid and sets the test price.
-     * All other sub-tests of this test will be free.
-     */
     @PutMapping("/tests/{testId}/pricing")
-    @Operation(summary = "Set paid sub-tests and price for a test")
+    @Operation(
+            summary = "Настроить цену и платные подтесты",
+            description = "Устанавливает цену теста и указывает, какие подтесты являются платными. " +
+                    "Все подтесты этого теста, НЕ вошедшие в `paidSubTestIds`, становятся бесплатными. " +
+                    "Одна оплата даёт доступ ко всем платным подтестам этого теста."
+    )
     public ResponseEntity<AdminTestResponse> updateTestPricing(
-            @PathVariable Long testId,
+            @Parameter(description = "ID теста") @PathVariable Long testId,
             @Valid @RequestBody UpdateTestPricingRequest request) {
         return ResponseEntity.ok(adminTestService.updateTestPricing(testId, request));
     }
 
-    // ===== SUB-TESTS =====
+    // ===== ПОДТЕСТЫ =====
 
     @PostMapping("/tests/{testId}/sub-tests")
-    @Operation(summary = "Add sub-test to a test")
+    @Operation(
+            summary = "Добавить подтест к тесту",
+            description = "Создаёт подтест (уровень) внутри теста. " +
+                    "`levelOrder` определяет порядок отображения (меньше = выше). " +
+                    "`durationMinutes` — время на прохождение в минутах."
+    )
     public ResponseEntity<AdminTestResponse.AdminSubTestResponse> createSubTest(
-            @PathVariable Long testId,
+            @Parameter(description = "ID теста") @PathVariable Long testId,
             @Valid @RequestBody CreateSubTestRequest request) {
         return ResponseEntity.ok(adminTestService.createSubTest(testId, request));
     }
 
     @PutMapping("/sub-tests/{subTestId}")
-    @Operation(summary = "Update sub-test")
+    @Operation(summary = "Обновить подтест")
     public ResponseEntity<AdminTestResponse.AdminSubTestResponse> updateSubTest(
-            @PathVariable Long subTestId,
+            @Parameter(description = "ID подтеста") @PathVariable Long subTestId,
             @Valid @RequestBody CreateSubTestRequest request) {
         return ResponseEntity.ok(adminTestService.updateSubTest(subTestId, request));
     }
 
     @DeleteMapping("/sub-tests/{subTestId}")
-    @Operation(summary = "Deactivate sub-test")
-    public ResponseEntity<Void> deleteSubTest(@PathVariable Long subTestId) {
+    @Operation(summary = "Деактивировать подтест")
+    @ApiResponse(responseCode = "204", description = "Подтест деактивирован")
+    public ResponseEntity<Void> deleteSubTest(
+            @Parameter(description = "ID подтеста") @PathVariable Long subTestId) {
         adminTestService.deleteSubTest(subTestId);
         return ResponseEntity.noContent().build();
     }
 
-    // ===== QUESTIONS =====
+    // ===== ВОПРОСЫ =====
 
     @GetMapping("/sub-tests/{subTestId}/questions")
-    @Operation(summary = "Get all questions for a sub-test")
-    public ResponseEntity<List<AdminQuestionResponse>> getQuestions(@PathVariable Long subTestId) {
+    @Operation(summary = "Список вопросов подтеста", description = "Возвращает все вопросы (включая неактивные) с вариантами ответов.")
+    public ResponseEntity<List<AdminQuestionResponse>> getQuestions(
+            @Parameter(description = "ID подтеста") @PathVariable Long subTestId) {
         return ResponseEntity.ok(adminTestService.getQuestions(subTestId));
     }
 
     @PostMapping("/sub-tests/{subTestId}/questions")
-    @Operation(summary = "Add question to sub-test")
+    @Operation(
+            summary = "Добавить вопрос к подтесту",
+            description = "Создаёт вопрос с вариантами ответа (2–6 штук). " +
+                    "**Ровно один** вариант должен иметь `isCorrect = true`. " +
+                    "Укажите `textKy` и `textKy` для вариантов для поддержки кыргызского языка."
+    )
     public ResponseEntity<AdminQuestionResponse> createQuestion(
-            @PathVariable Long subTestId,
+            @Parameter(description = "ID подтеста") @PathVariable Long subTestId,
             @Valid @RequestBody CreateQuestionRequest request) {
         return ResponseEntity.ok(adminTestService.createQuestion(subTestId, request));
     }
 
     @PutMapping("/questions/{questionId}")
-    @Operation(summary = "Update question")
+    @Operation(summary = "Обновить вопрос", description = "Полностью заменяет вопрос и все варианты ответа.")
     public ResponseEntity<AdminQuestionResponse> updateQuestion(
-            @PathVariable Long questionId,
+            @Parameter(description = "ID вопроса") @PathVariable Long questionId,
             @Valid @RequestBody CreateQuestionRequest request) {
         return ResponseEntity.ok(adminTestService.updateQuestion(questionId, request));
     }
 
     @DeleteMapping("/questions/{questionId}")
-    @Operation(summary = "Deactivate question")
-    public ResponseEntity<Void> deleteQuestion(@PathVariable Long questionId) {
+    @Operation(summary = "Деактивировать вопрос")
+    @ApiResponse(responseCode = "204", description = "Вопрос деактивирован")
+    public ResponseEntity<Void> deleteQuestion(
+            @Parameter(description = "ID вопроса") @PathVariable Long questionId) {
         adminTestService.deleteQuestion(questionId);
         return ResponseEntity.noContent().build();
     }

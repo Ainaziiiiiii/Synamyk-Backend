@@ -1,6 +1,8 @@
 package synamyk.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -13,28 +15,30 @@ import synamyk.service.AnalyticsService;
 @RestController
 @RequestMapping("/api/admin/videos")
 @RequiredArgsConstructor
-@Tag(name = "Admin - Videos", description = "Admin: create and manage video lessons")
+@Tag(name = "Админ — Видеоуроки", description = "Управление видеоуроками. Видео хранятся как YouTube-ссылки. Требуется роль ADMIN.")
+@SecurityRequirement(name = "Bearer")
 public class AdminVideoController {
 
     private final AnalyticsService analyticsService;
 
     @PostMapping
-    @Operation(summary = "Create video lesson")
+    @Operation(summary = "Создать видеоурок",
+            description = "Поле `videoUrl` — ссылка на YouTube. Превью загружается через POST /api/upload (тип VIDEO_THUMBNAIL).")
     public ResponseEntity<VideoLessonResponse> create(@Valid @RequestBody CreateVideoLessonRequest request) {
         return ResponseEntity.ok(analyticsService.createVideo(request));
     }
 
     @PutMapping("/{id}")
-    @Operation(summary = "Update video lesson")
+    @Operation(summary = "Обновить видеоурок")
     public ResponseEntity<VideoLessonResponse> update(
-            @PathVariable Long id,
+            @Parameter(description = "ID видеоурока") @PathVariable Long id,
             @Valid @RequestBody CreateVideoLessonRequest request) {
         return ResponseEntity.ok(analyticsService.updateVideo(id, request));
     }
 
     @DeleteMapping("/{id}")
-    @Operation(summary = "Deactivate (hide) video lesson")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
+    @Operation(summary = "Деактивировать видеоурок")
+    public ResponseEntity<Void> delete(@Parameter(description = "ID видеоурока") @PathVariable Long id) {
         analyticsService.deleteVideo(id);
         return ResponseEntity.noContent().build();
     }

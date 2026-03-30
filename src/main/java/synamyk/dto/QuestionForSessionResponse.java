@@ -17,6 +17,6 @@ public class QuestionForSessionResponse {
     private Integer pointValue;
     private List<AnswerOptionResponse> options;
     private Long remainingSeconds;
-    private Long selectedOptionId;  // null if not answered yet
+    private List<Long> selectedOptionIds;  // empty if not answered yet
     private Boolean isSkipped;
 }

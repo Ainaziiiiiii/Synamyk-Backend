@@ -34,7 +34,7 @@ public class SmsProService {
     @Value("${sms.smspro.password}")
     private String password;
 
-    @Value("${sms.smspro.sender:Synamyk}")
+    @Value("${sms.smspro.sender}")
     private String sender;
 
     @Value("${sms.smspro.enabled:true}")

@@ -27,7 +27,7 @@ public class SessionResultResponse {
         private Integer index;          // 1-based for display
         private Boolean isCorrect;
         private Boolean isSkipped;
-        private Long selectedOptionId;
-        private Long correctOptionId;
+        private List<Long> selectedOptionIds;
+        private List<Long> correctOptionIds;
     }
 }

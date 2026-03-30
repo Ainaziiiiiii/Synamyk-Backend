@@ -8,6 +8,7 @@ import synamyk.dto.TestListResponse;
 import synamyk.entities.Test;
 import synamyk.repo.TestRepository;
 import synamyk.repo.TestSessionRepository;
+import synamyk.util.L10n;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -24,7 +25,7 @@ public class RatingService {
      * Score = best (max) correctAnswers from a single completed session
      * across all sub-tests of that test.
      */
-    public RatingResponse getRatingByTest(Long testId) {
+    public RatingResponse getRatingByTest(Long testId, String lang) {
         Test test = testRepository.findById(testId)
                 .orElseThrow(() -> new RuntimeException("Test not found"));
 
@@ -61,7 +62,7 @@ public class RatingService {
 
         return RatingResponse.builder()
                 .testId(test.getId())
-                .testTitle(test.getTitle())
+                .testTitle(L10n.pick(test.getTitle(), test.getTitleKy(), lang))
                 .entries(entries)
                 .build();
     }
@@ -69,12 +70,12 @@ public class RatingService {
     /**
      * Returns list of all active tests available as filter options.
      */
-    public List<TestListResponse> getFilterOptions() {
+    public List<TestListResponse> getFilterOptions(String lang) {
         return testRepository.findByActiveTrueOrderByCreatedAtAsc().stream()
                 .map(t -> TestListResponse.builder()
                         .id(t.getId())
-                        .title(t.getTitle())
-                        .description(t.getDescription())
+                        .title(L10n.pick(t.getTitle(), t.getTitleKy(), lang))
+                        .description(L10n.pick(t.getDescription(), t.getDescriptionKy(), lang))
                         .iconUrl(t.getIconUrl())
                         .price(t.getPrice())
                         .subTestCount(0)

@@ -4,6 +4,9 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Entity
 @Table(name = "user_answers")
 @Getter
@@ -25,9 +28,14 @@ public class UserAnswer extends BaseEntity {
     @JoinColumn(name = "question_id", nullable = false)
     private Question question;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "selected_option_id")
-    private AnswerOption selectedOption;
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "user_answer_selected_options",
+            joinColumns = @JoinColumn(name = "user_answer_id"),
+            inverseJoinColumns = @JoinColumn(name = "answer_option_id")
+    )
+    @Builder.Default
+    private List<AnswerOption> selectedOptions = new ArrayList<>();
 
     @Column(nullable = false)
     private Boolean isCorrect = false;

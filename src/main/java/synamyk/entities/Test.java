@@ -24,8 +24,14 @@ public class Test extends BaseEntity {
     @Column(nullable = false)
     private String title;
 
+    @Column
+    private String titleKy;
+
     @Column(columnDefinition = "TEXT")
     private String description;
+
+    @Column(columnDefinition = "TEXT")
+    private String descriptionKy;
 
     @Column
     private String iconUrl;

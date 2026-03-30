@@ -27,11 +27,17 @@ public class SubTest extends BaseEntity {
     @Column(nullable = false)
     private String title;
 
+    @Column
+    private String titleKy;
+
     /**
      * Display name for the level, e.g. "Бесплатный уровень", "1-уровень"
      */
     @Column(nullable = false)
     private String levelName;
+
+    @Column
+    private String levelNameKy;
 
     @Column(nullable = false)
     private Integer levelOrder = 0;

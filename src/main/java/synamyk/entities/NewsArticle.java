@@ -22,11 +22,17 @@ public class NewsArticle extends BaseEntity {
     @Column(nullable = false, length = 500)
     private String title;
 
+    @Column(length = 500)
+    private String titleKy;
+
     @Column(length = 1000)
     private String coverImageUrl;
 
     @Column(nullable = false, columnDefinition = "TEXT")
     private String content;
+
+    @Column(columnDefinition = "TEXT")
+    private String contentKy;
 
     @Column(nullable = false)
     private LocalDateTime publishedAt;

@@ -4,34 +4,35 @@ spring:
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/synamyk}
     username: ${DB_USERNAME:postgres}
-    password: ${DB_PASSWORD:postgres}
+    password: ${DB_PASSWORD:1111}
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
-      ddl-auto: validate
+      ddl-auto: update
     show-sql: false
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
-        format_sql: true
+        format_sql: false
   flyway:
-    enabled: true
+    enabled: false
     locations: classpath:db/migration
-    baseline-on-migrate: true
+    baseline-on-migrate: false
 
 server:
   port: 8080
 
 finik:
-  api-key: ${FINIK_API_KEY:your-api-key}
-  account-id: ${FINIK_ACCOUNT_ID:your-account-id}
-  base-url: ${FINIK_BASE_URL:https://api.acquiring.averspay.kg}
-  private-key-path: ${FINIK_PRIVATE_KEY_PATH:classpath:finik_private.pem}
-  webhook-url: ${APP_BASE_URL:https://your-domain.com}/api/webhooks/finik
+  api-key: LOlnU70w7LtRpBZ5HAxLaVatjIXQLGS9xmeSmWM4
+  account-id: d54479fa-bea8-4762-ba96-6ec8b1eaea26
+  private-key-path: classpath:workkg.pem
+  base-url: https://api.acquiring.averspay.kg
+  webhook-url: ${APP_BASE_URL}/api/webhooks/finik
 
 jwt:
   secret: ${JWT_SECRET:SynamykSuperSecretKeyForJwtTokenGenerationMinimum256BitsLong}
   expiration: ${JWT_EXPIRATION:86400000}
+  refresh-expiration: ${JWT_REFRESH_EXPIRATION:2592000000}
 
 sms:
   smspro:
@@ -39,7 +40,7 @@ sms:
     url: ${SMSPRO_URL:https://smspro.nikita.kg/api/message}
     login: ${SMSPRO_LOGIN:Cholpon123456}
     password: ${SMSPRO_PASSWORD:6EX5vJf8}
-    sender: ${SMSPRO_SENDER:Synamyk}
+    sender: ${SMSPRO_SENDER:BilgirimKG}
     ttl-minutes: ${SMSPRO_TTL:5}
 
 anthropic:

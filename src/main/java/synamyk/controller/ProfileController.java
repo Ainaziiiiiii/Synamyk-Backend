@@ -1,6 +1,10 @@
 package synamyk.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -15,20 +19,34 @@ import synamyk.service.ProfileService;
 @RestController
 @RequestMapping("/api/profile")
 @RequiredArgsConstructor
-@Tag(name = "Profile", description = "User profile: view, edit, settings, delete account")
+@Tag(name = "Профиль", description = "Просмотр и редактирование профиля пользователя, смена данных, удаление аккаунта")
+@SecurityRequirement(name = "Bearer")
 public class ProfileController {
 
     private final ProfileService profileService;
     private final UserRepository userRepository;
 
     @GetMapping
-    @Operation(summary = "Get current user profile with stats")
+    @Operation(
+            summary = "Получить профиль текущего пользователя",
+            description = "Возвращает данные профиля и статистику: количество пройденных тестов, " +
+                    "суммарный балл (сумма правильных ответов за все сессии) и количество приглашённых пользователей."
+    )
+    @ApiResponse(responseCode = "200", description = "Данные профиля со статистикой")
     public ResponseEntity<ProfileResponse> getProfile(@AuthenticationPrincipal UserDetails userDetails) {
         return ResponseEntity.ok(profileService.getProfile(resolveUserId(userDetails)));
     }
 
     @PutMapping
-    @Operation(summary = "Update profile (name, bio, avatar)")
+    @Operation(
+            summary = "Редактировать профиль",
+            description = "Обновляет имя, фамилию, описание (bio) и URL аватара. " +
+                    "Аватар загружается через POST /api/upload (тип AVATAR) и URL передаётся в это поле."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Обновлённый профиль"),
+            @ApiResponse(responseCode = "401", description = "Не авторизован")
+    })
     public ResponseEntity<ProfileResponse> updateProfile(
             @AuthenticationPrincipal UserDetails userDetails,
             @RequestBody UpdateProfileRequest request) {
@@ -36,7 +54,15 @@ public class ProfileController {
     }
 
     @PostMapping("/change-phone/request")
-    @Operation(summary = "Request phone change: sends OTP to the new phone")
+    @Operation(
+            summary = "Запрос на смену номера телефона",
+            description = "Проверяет, что старый номер совпадает с текущим, и отправляет 4-значный OTP-код " +
+                    "на новый номер через SMSPRO. Новый номер не должен быть уже зарегистрирован."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "OTP отправлен на новый номер"),
+            @ApiResponse(responseCode = "400", description = "Старый номер не совпадает или новый уже зарегистрирован")
+    })
     public ResponseEntity<OtpSendResponse> requestPhoneChange(
             @AuthenticationPrincipal UserDetails userDetails,
             @Valid @RequestBody ChangePhoneRequest request) {
@@ -44,46 +70,77 @@ public class ProfileController {
     }
 
     @PostMapping("/change-phone/confirm")
-    @Operation(summary = "Confirm phone change with OTP code")
-    public ResponseEntity<ApiResponse> confirmPhoneChange(
+    @Operation(
+            summary = "Подтверждение смены номера телефона",
+            description = "Проверяет OTP-код, отправленный на новый номер, и обновляет номер пользователя. " +
+                    "После успешной смены нужно повторно войти для получения нового JWT."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Номер телефона успешно изменён"),
+            @ApiResponse(responseCode = "400", description = "Неверный или истёкший OTP-код")
+    })
+    public ResponseEntity<MessageResponse> confirmPhoneChange(
             @AuthenticationPrincipal UserDetails userDetails,
             @Valid @RequestBody ConfirmPhoneChangeRequest request) {
         return ResponseEntity.ok(profileService.confirmPhoneChange(resolveUserId(userDetails), request));
     }
 
     @PutMapping("/change-password")
-    @Operation(summary = "Change password")
-    public ResponseEntity<ApiResponse> changePassword(
+    @Operation(
+            summary = "Смена пароля",
+            description = "Проверяет старый пароль и устанавливает новый. " +
+                    "Новый пароль должен совпадать с полем `confirmPassword` и содержать минимум 6 символов."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Пароль успешно изменён"),
+            @ApiResponse(responseCode = "400", description = "Старый пароль неверен или пароли не совпадают")
+    })
+    public ResponseEntity<MessageResponse> changePassword(
             @AuthenticationPrincipal UserDetails userDetails,
             @Valid @RequestBody ChangePasswordRequest request) {
         return ResponseEntity.ok(profileService.changePassword(resolveUserId(userDetails), request));
     }
 
     @PutMapping("/change-region")
-    @Operation(summary = "Change region")
-    public ResponseEntity<ApiResponse> changeRegion(
+    @Operation(
+            summary = "Смена региона",
+            description = "Обновляет регион пользователя. Список регионов: GET /api/regions."
+    )
+    @ApiResponse(responseCode = "200", description = "Регион обновлён")
+    public ResponseEntity<MessageResponse> changeRegion(
             @AuthenticationPrincipal UserDetails userDetails,
             @Valid @RequestBody ChangeRegionRequest request) {
         return ResponseEntity.ok(profileService.changeRegion(resolveUserId(userDetails), request));
     }
 
     @PutMapping("/language")
-    @Operation(summary = "Change interface language (RU or KY)")
-    public ResponseEntity<ApiResponse> changeLanguage(
+    @Operation(
+            summary = "Смена языка интерфейса",
+            description = "Устанавливает предпочтительный язык интерфейса: **RU** (русский) или **KY** (кыргызский). " +
+                    "После смены все эндпоинты с локализованным контентом будут возвращать данные на выбранном языке."
+    )
+    @ApiResponse(responseCode = "200", description = "Язык изменён")
+    public ResponseEntity<MessageResponse> changeLanguage(
             @AuthenticationPrincipal UserDetails userDetails,
             @Valid @RequestBody ChangeLanguageRequest request) {
         return ResponseEntity.ok(profileService.changeLanguage(resolveUserId(userDetails), request));
     }
 
     @DeleteMapping
-    @Operation(summary = "Delete account (soft delete — account is deactivated)")
-    public ResponseEntity<ApiResponse> deleteAccount(@AuthenticationPrincipal UserDetails userDetails) {
+    @Operation(
+            summary = "Удалить аккаунт",
+            description = "Мягкое удаление аккаунта: устанавливает `active = false`. " +
+                    "Пользователь больше не сможет войти — Spring Security вернёт 401. " +
+                    "Данные сохраняются в базе для истории."
+    )
+    @ApiResponse(responseCode = "200", description = "Аккаунт удалён")
+    public ResponseEntity<MessageResponse> deleteAccount(@AuthenticationPrincipal UserDetails userDetails) {
         return ResponseEntity.ok(profileService.deleteAccount(resolveUserId(userDetails)));
     }
 
     private Long resolveUserId(UserDetails userDetails) {
         return userRepository.findByPhone(userDetails.getUsername())
-                .orElseThrow(() -> new RuntimeException("User not found"))
+                .orElseThrow(() -> new RuntimeException("Пользователь не найден"))
                 .getId();
     }
 }

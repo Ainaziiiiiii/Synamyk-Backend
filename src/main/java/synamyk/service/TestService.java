@@ -11,6 +11,7 @@ import synamyk.repo.SubTestRepository;
 import synamyk.repo.TestRepository;
 import synamyk.repo.TestSessionRepository;
 import synamyk.repo.UserTestAccessRepository;
+import synamyk.util.L10n;
 
 import java.util.List;
 
@@ -24,12 +25,12 @@ public class TestService {
     private final UserTestAccessRepository accessRepository;
     private final TestSessionRepository sessionRepository;
 
-    public List<TestListResponse> getAllTests() {
+    public List<TestListResponse> getAllTests(String lang) {
         return testRepository.findByActiveTrueOrderByCreatedAtAsc().stream()
                 .map(t -> TestListResponse.builder()
                         .id(t.getId())
-                        .title(t.getTitle())
-                        .description(t.getDescription())
+                        .title(L10n.pick(t.getTitle(), t.getTitleKy(), lang))
+                        .description(L10n.pick(t.getDescription(), t.getDescriptionKy(), lang))
                         .iconUrl(t.getIconUrl())
                         .price(t.getPrice())
                         .subTestCount(subTestRepository
@@ -38,7 +39,7 @@ public class TestService {
                 .toList();
     }
 
-    public TestDetailResponse getTestDetail(Long testId, Long userId) {
+    public TestDetailResponse getTestDetail(Long testId, Long userId, String lang) {
         Test test = testRepository.findById(testId)
                 .orElseThrow(() -> new RuntimeException("Test not found"));
 
@@ -60,8 +61,8 @@ public class TestService {
 
                     return SubTestResponse.builder()
                             .id(st.getId())
-                            .title(st.getTitle())
-                            .levelName(st.getLevelName())
+                            .title(L10n.pick(st.getTitle(), st.getTitleKy(), lang))
+                            .levelName(L10n.pick(st.getLevelName(), st.getLevelNameKy(), lang))
                             .levelOrder(st.getLevelOrder())
                             .isPaid(st.getIsPaid())
                             .durationMinutes(st.getDurationMinutes())
@@ -74,8 +75,8 @@ public class TestService {
 
         return TestDetailResponse.builder()
                 .id(test.getId())
-                .title(test.getTitle())
-                .description(test.getDescription())
+                .title(L10n.pick(test.getTitle(), test.getTitleKy(), lang))
+                .description(L10n.pick(test.getDescription(), test.getDescriptionKy(), lang))
                 .price(test.getPrice())
                 .hasPaidAccess(hasAccess)
                 .subTests(subTests)

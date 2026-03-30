@@ -8,6 +8,7 @@ import synamyk.dto.NewsListResponse;
 import synamyk.dto.admin.CreateNewsRequest;
 import synamyk.entities.NewsArticle;
 import synamyk.repo.NewsArticleRepository;
+import synamyk.util.L10n;
 
 import java.util.List;
 
@@ -17,13 +18,13 @@ public class NewsService {
 
     private final NewsArticleRepository newsRepository;
 
-    public List<NewsListResponse> getNewsList() {
+    public List<NewsListResponse> getNewsList(String lang) {
         return newsRepository.findByActiveTrueOrderByPublishedAtDesc().stream()
-                .map(this::toListResponse)
+                .map(a -> toListResponse(a, lang))
                 .toList();
     }
 
-    public NewsDetailResponse getNewsDetail(Long id) {
+    public NewsDetailResponse getNewsDetail(Long id, String lang) {
         NewsArticle article = newsRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("News article not found"));
 
@@ -33,9 +34,9 @@ public class NewsService {
 
         return NewsDetailResponse.builder()
                 .id(article.getId())
-                .title(article.getTitle())
+                .title(L10n.pick(article.getTitle(), article.getTitleKy(), lang))
                 .coverImageUrl(article.getCoverImageUrl())
-                .content(article.getContent())
+                .content(L10n.pick(article.getContent(), article.getContentKy(), lang))
                 .publishedAt(article.getPublishedAt())
                 .build();
     }
@@ -44,8 +45,10 @@ public class NewsService {
     public NewsDetailResponse createNews(CreateNewsRequest request) {
         NewsArticle article = NewsArticle.builder()
                 .title(request.getTitle())
+                .titleKy(request.getTitleKy())
                 .coverImageUrl(request.getCoverImageUrl())
                 .content(request.getContent())
+                .contentKy(request.getContentKy())
                 .publishedAt(request.getPublishedAt())
                 .active(true)
                 .build();
@@ -58,8 +61,10 @@ public class NewsService {
                 .orElseThrow(() -> new RuntimeException("News article not found"));
 
         article.setTitle(request.getTitle());
+        article.setTitleKy(request.getTitleKy());
         article.setCoverImageUrl(request.getCoverImageUrl());
         article.setContent(request.getContent());
+        article.setContentKy(request.getContentKy());
         article.setPublishedAt(request.getPublishedAt());
         return toDetailResponse(newsRepository.save(article));
     }
@@ -72,13 +77,14 @@ public class NewsService {
         newsRepository.save(article);
     }
 
-    private NewsListResponse toListResponse(NewsArticle a) {
-        String preview = a.getContent() != null && a.getContent().length() > 150
-                ? a.getContent().substring(0, 150) + "..."
-                : a.getContent();
+    private NewsListResponse toListResponse(NewsArticle a, String lang) {
+        String content = L10n.pick(a.getContent(), a.getContentKy(), lang);
+        String preview = content != null && content.length() > 150
+                ? content.substring(0, 150) + "..."
+                : content;
         return NewsListResponse.builder()
                 .id(a.getId())
-                .title(a.getTitle())
+                .title(L10n.pick(a.getTitle(), a.getTitleKy(), lang))
                 .coverImageUrl(a.getCoverImageUrl())
                 .preview(preview)
                 .publishedAt(a.getPublishedAt())
@@ -86,6 +92,7 @@ public class NewsService {
     }
 
     private NewsDetailResponse toDetailResponse(NewsArticle a) {
+        // Admin response — always Russian (full object)
         return NewsDetailResponse.builder()
                 .id(a.getId())
                 .title(a.getTitle())

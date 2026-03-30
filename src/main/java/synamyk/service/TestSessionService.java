@@ -8,6 +8,8 @@ import synamyk.dto.*;
 import synamyk.entities.*;
 import synamyk.repo.*;
 
+import synamyk.util.L10n;
+
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -33,7 +35,7 @@ public class TestSessionService {
      * Start or resume a sub-test session.
      */
     @Transactional
-    public StartSessionResponse startSession(Long subTestId, Long userId) {
+    public StartSessionResponse startSession(Long subTestId, Long userId, String lang) {
         SubTest subTest = subTestRepository.findById(subTestId)
                 .orElseThrow(() -> new RuntimeException("SubTest not found"));
 
@@ -63,8 +65,8 @@ public class TestSessionService {
                 return StartSessionResponse.builder()
                         .sessionId(session.getId())
                         .subTestId(subTestId)
-                        .subTestTitle(subTest.getTitle())
-                        .levelName(subTest.getLevelName())
+                        .subTestTitle(L10n.pick(subTest.getTitle(), subTest.getTitleKy(), lang))
+                        .levelName(L10n.pick(subTest.getLevelName(), subTest.getLevelNameKy(), lang))
                         .totalQuestions(total)
                         .durationMinutes(subTest.getDurationMinutes())
                         .expiresAt(session.getExpiresAt())
@@ -101,8 +103,8 @@ public class TestSessionService {
         return StartSessionResponse.builder()
                 .sessionId(session.getId())
                 .subTestId(subTestId)
-                .subTestTitle(subTest.getTitle())
-                .levelName(subTest.getLevelName())
+                .subTestTitle(L10n.pick(subTest.getTitle(), subTest.getTitleKy(), lang))
+                .levelName(L10n.pick(subTest.getLevelName(), subTest.getLevelNameKy(), lang))
                 .totalQuestions(questions.size())
                 .durationMinutes(subTest.getDurationMinutes())
                 .expiresAt(expiresAt)
@@ -115,7 +117,7 @@ public class TestSessionService {
     /**
      * Get current question for a session.
      */
-    public QuestionForSessionResponse getCurrentQuestion(Long sessionId, Long userId) {
+    public QuestionForSessionResponse getCurrentQuestion(Long sessionId, Long userId, String lang) {
         TestSession session = getActiveSession(sessionId, userId);
         List<Question> questions = questionRepository
                 .findBySubTestIdAndActiveTrueOrderByOrderIndexAsc(session.getSubTest().getId());
@@ -126,13 +128,13 @@ public class TestSessionService {
         }
 
         Question question = questions.get(index);
-        return buildQuestionResponse(question, index, questions.size(), session);
+        return buildQuestionResponse(question, index, questions.size(), session, lang);
     }
 
     /**
      * Get question by index.
      */
-    public QuestionForSessionResponse getQuestionByIndex(Long sessionId, Long userId, int index) {
+    public QuestionForSessionResponse getQuestionByIndex(Long sessionId, Long userId, int index, String lang) {
         TestSession session = getActiveSession(sessionId, userId);
         List<Question> questions = questionRepository
                 .findBySubTestIdAndActiveTrueOrderByOrderIndexAsc(session.getSubTest().getId());
@@ -142,14 +144,14 @@ public class TestSessionService {
         }
 
         Question question = questions.get(index);
-        return buildQuestionResponse(question, index, questions.size(), session);
+        return buildQuestionResponse(question, index, questions.size(), session, lang);
     }
 
     /**
      * Submit answer for current question and advance to next.
      */
     @Transactional
-    public QuestionForSessionResponse submitAnswer(Long sessionId, Long userId, SubmitAnswerRequest request) {
+    public QuestionForSessionResponse submitAnswer(Long sessionId, Long userId, SubmitAnswerRequest request, String lang) {
         TestSession session = getActiveSession(sessionId, userId);
 
         if (session.isExpired()) {
@@ -184,18 +186,32 @@ public class TestSessionService {
                     .build();
         }
 
-        boolean isSkipped = request.getSelectedOptionId() == null;
+        boolean isSkipped = request.getSelectedOptionIds() == null || request.getSelectedOptionIds().isEmpty();
         answer.setIsSkipped(isSkipped);
 
         if (!isSkipped) {
-            AnswerOption selectedOption = currentQuestion.getOptions().stream()
-                    .filter(o -> o.getId().equals(request.getSelectedOptionId()))
-                    .findFirst()
-                    .orElseThrow(() -> new RuntimeException("Option not found"));
-            answer.setSelectedOption(selectedOption);
-            answer.setIsCorrect(selectedOption.getIsCorrect());
+            List<Long> requestedIds = request.getSelectedOptionIds();
+            List<AnswerOption> selected = currentQuestion.getOptions().stream()
+                    .filter(o -> requestedIds.contains(o.getId()))
+                    .toList();
+            if (selected.size() != requestedIds.size()) {
+                throw new RuntimeException("One or more selected options not found for this question.");
+            }
+            answer.setSelectedOptions(selected);
+
+            // Correct if the set of selected options exactly matches the set of correct options
+            List<Long> correctIds = currentQuestion.getOptions().stream()
+                    .filter(AnswerOption::getIsCorrect)
+                    .map(AnswerOption::getId)
+                    .sorted()
+                    .toList();
+            List<Long> selectedIds = selected.stream()
+                    .map(AnswerOption::getId)
+                    .sorted()
+                    .toList();
+            answer.setIsCorrect(correctIds.equals(selectedIds));
         } else {
-            answer.setSelectedOption(null);
+            answer.setSelectedOptions(new java.util.ArrayList<>());
             answer.setIsCorrect(false);
         }
 
@@ -212,29 +228,29 @@ public class TestSessionService {
         }
 
         Question nextQuestion = questions.get(nextIndex);
-        return buildQuestionResponse(nextQuestion, nextIndex, questions.size(), session);
+        return buildQuestionResponse(nextQuestion, nextIndex, questions.size(), session, lang);
     }
 
     /**
      * Skip current question and advance to next.
      */
     @Transactional
-    public QuestionForSessionResponse skipQuestion(Long sessionId, Long userId) {
+    public QuestionForSessionResponse skipQuestion(Long sessionId, Long userId, String lang) {
         TestSession session = getActiveSession(sessionId, userId);
         List<Question> questions = questionRepository
                 .findBySubTestIdAndActiveTrueOrderByOrderIndexAsc(session.getSubTest().getId());
         int currentIndex = session.getCurrentIndex();
         SubmitAnswerRequest request = new SubmitAnswerRequest();
         request.setQuestionId(questions.get(currentIndex).getId());
-        request.setSelectedOptionId(null);
-        return submitAnswer(sessionId, userId, request);
+        request.setSelectedOptionIds(null);
+        return submitAnswer(sessionId, userId, request, lang);
     }
 
     /**
      * Finish the test session and return results.
      */
     @Transactional
-    public SessionResultResponse finishSession(Long sessionId, Long userId) {
+    public SessionResultResponse finishSession(Long sessionId, Long userId, String lang) {
         TestSession session = getActiveSession(sessionId, userId);
 
         long correct = answerRepository.countBySessionIdAndIsCorrectTrue(sessionId);
@@ -242,7 +258,7 @@ public class TestSessionService {
         session.setStatus(TestSession.SessionStatus.COMPLETED);
         session.setCompletedAt(LocalDateTime.now());
         sessionRepository.save(session);
-        return buildResult(session);
+        return buildResult(session, lang);
     }
 
     /**
@@ -260,7 +276,7 @@ public class TestSessionService {
     /**
      * Get result for a completed session.
      */
-    public SessionResultResponse getResult(Long sessionId, Long userId) {
+    public SessionResultResponse getResult(Long sessionId, Long userId, String lang) {
         TestSession session = sessionRepository.findById(sessionId)
                 .orElseThrow(() -> new RuntimeException("Session not found"));
 
@@ -268,7 +284,7 @@ public class TestSessionService {
             throw new RuntimeException("Access denied.");
         }
 
-        return buildResult(session);
+        return buildResult(session, lang);
     }
 
     /**
@@ -302,15 +318,16 @@ public class TestSessionService {
             Question q = wa.getQuestion();
             List<AnswerOption> options = q.getOptions();
 
-            String userWrongText = wa.getSelectedOption() != null
-                    ? wa.getSelectedOption().getLabel() + ". " + wa.getSelectedOption().getText()
-                    : "—";
+            String userWrongText = wa.getSelectedOptions().isEmpty()
+                    ? "—"
+                    : wa.getSelectedOptions().stream()
+                            .map(o -> o.getLabel() + ". " + o.getText())
+                            .collect(Collectors.joining(", "));
 
             String correctText = options.stream()
                     .filter(AnswerOption::getIsCorrect)
                     .map(o -> o.getLabel() + ". " + o.getText())
-                    .findFirst()
-                    .orElse("—");
+                    .collect(Collectors.joining(", "));
 
             List<String> optionTexts = options.stream()
                     .map(o -> o.getLabel() + ". " + o.getText())
@@ -351,15 +368,14 @@ public class TestSessionService {
     }
 
     private QuestionForSessionResponse buildQuestionResponse(
-            Question question, int index, int total, TestSession session) {
+            Question question, int index, int total, TestSession session, String lang) {
 
         Optional<UserAnswer> existingAnswer = answerRepository
                 .findBySessionIdAndQuestionId(session.getId(), question.getId());
 
-        Long selectedOptionId = existingAnswer
-                .flatMap(a -> Optional.ofNullable(a.getSelectedOption()))
-                .map(AnswerOption::getId)
-                .orElse(null);
+        List<Long> selectedOptionIds = existingAnswer
+                .map(a -> a.getSelectedOptions().stream().map(AnswerOption::getId).toList())
+                .orElse(List.of());
 
         Boolean isSkipped = existingAnswer.map(UserAnswer::getIsSkipped).orElse(false);
 
@@ -367,7 +383,7 @@ public class TestSessionService {
                 .map(o -> AnswerOptionResponse.builder()
                         .id(o.getId())
                         .label(o.getLabel())
-                        .text(o.getText())
+                        .text(L10n.pick(o.getText(), o.getTextKy(), lang))
                         .orderIndex(o.getOrderIndex())
                         .build())
                 .toList();
@@ -376,18 +392,18 @@ public class TestSessionService {
                 .questionId(question.getId())
                 .index(index)
                 .totalQuestions(total)
-                .sectionName(question.getSectionName())
-                .text(question.getText())
+                .sectionName(L10n.pick(question.getSectionName(), question.getSectionNameKy(), lang))
+                .text(L10n.pick(question.getText(), question.getTextKy(), lang))
                 .imageUrl(question.getImageUrl())
                 .pointValue(question.getPointValue())
                 .options(options)
                 .remainingSeconds(session.getRemainingSeconds())
-                .selectedOptionId(selectedOptionId)
+                .selectedOptionIds(selectedOptionIds)
                 .isSkipped(isSkipped)
                 .build();
     }
 
-    private SessionResultResponse buildResult(TestSession session) {
+    private SessionResultResponse buildResult(TestSession session, String lang) {
         List<UserAnswer> answers = answerRepository.findBySessionIdOrderByQuestionOrderIndex(session.getId());
         List<Question> allQuestions = questionRepository
                 .findBySubTestIdAndActiveTrueOrderByOrderIndexAsc(session.getSubTest().getId());
@@ -404,7 +420,7 @@ public class TestSessionService {
             timeTaken = java.time.Duration.between(session.getStartedAt(), session.getCompletedAt()).getSeconds();
         }
 
-        String motivation = getMotivationalMessage(percentage);
+        String motivation = "KY".equals(lang) ? getMotivationalMessageKy(percentage) : getMotivationalMessage(percentage);
 
         List<SessionResultResponse.QuestionResultItem> items = IntStream.range(0, allQuestions.size())
                 .mapToObj(idx -> {
@@ -413,27 +429,30 @@ public class TestSessionService {
                             .filter(a -> a.getQuestion().getId().equals(q.getId()))
                             .findFirst();
 
-                    Long correctOptionId = q.getOptions().stream()
+                    List<Long> correctOptionIds = q.getOptions().stream()
                             .filter(AnswerOption::getIsCorrect)
                             .map(AnswerOption::getId)
-                            .findFirst().orElse(null);
+                            .toList();
+
+                    List<Long> selectedOptionIds = ua
+                            .map(a -> a.getSelectedOptions().stream().map(AnswerOption::getId).toList())
+                            .orElse(List.of());
 
                     return SessionResultResponse.QuestionResultItem.builder()
                             .questionId(q.getId())
                             .index(idx + 1)
                             .isCorrect(ua.map(UserAnswer::getIsCorrect).orElse(false))
                             .isSkipped(ua.map(UserAnswer::getIsSkipped).orElse(true))
-                            .selectedOptionId(ua.flatMap(a -> Optional.ofNullable(a.getSelectedOption()))
-                                    .map(AnswerOption::getId).orElse(null))
-                            .correctOptionId(correctOptionId)
+                            .selectedOptionIds(selectedOptionIds)
+                            .correctOptionIds(correctOptionIds)
                             .build();
                 })
                 .collect(Collectors.toList());
 
         return SessionResultResponse.builder()
                 .sessionId(session.getId())
-                .subTestTitle(session.getSubTest().getTitle())
-                .levelName(session.getSubTest().getLevelName())
+                .subTestTitle(L10n.pick(session.getSubTest().getTitle(), session.getSubTest().getTitleKy(), lang))
+                .levelName(L10n.pick(session.getSubTest().getLevelName(), session.getSubTest().getLevelNameKy(), lang))
                 .totalQuestions(total)
                 .correctAnswers((int) correct)
                 .wrongAnswers((int) wrong)
@@ -450,5 +469,12 @@ public class TestSessionService {
         if (percentage >= 70) return "Хорошая работа! Продолжай в том же духе!";
         if (percentage >= 50) return "Неплохо! Ещё немного практики и будет отлично!";
         return "Не сдавайся! Каждая попытка делает тебя сильнее!";
+    }
+
+    private String getMotivationalMessageKy(int percentage) {
+        if (percentage >= 90) return "Мыкты! Сен чыныгы билимдүүсүң!";
+        if (percentage >= 70) return "Жакшы иш! Ошондой эле улантыгыла!";
+        if (percentage >= 50) return "Жаман эмес! Дагы бир аз машыгуу керек!";
+        return "Баш тартпагыла! Ар бир аракет сени күчтүүрөөк кылат!";
     }
 }

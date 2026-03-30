@@ -88,7 +88,7 @@ public class ProfileService {
      * Step 2: verify OTP sent to new phone, then switch user's phone.
      */
     @Transactional
-    public ApiResponse confirmPhoneChange(Long userId, ConfirmPhoneChangeRequest request) {
+    public MessageResponse confirmPhoneChange(Long userId, ConfirmPhoneChangeRequest request) {
         User user = findUser(userId);
         String newPhone = formatPhone(request.getNewPhone());
 
@@ -122,11 +122,11 @@ public class ProfileService {
         userRepository.save(user);
 
         log.info("Phone changed successfully for user {}: {}", userId, newPhone);
-        return ApiResponse.builder().success(true).message("Phone number updated successfully.").build();
+        return MessageResponse.builder().success(true).message("Phone number updated successfully.").build();
     }
 
     @Transactional
-    public ApiResponse changePassword(Long userId, ChangePasswordRequest request) {
+    public MessageResponse changePassword(Long userId, ChangePasswordRequest request) {
         if (!request.getNewPassword().equals(request.getConfirmPassword())) {
             throw new RuntimeException("New passwords do not match.");
         }
@@ -140,25 +140,25 @@ public class ProfileService {
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(user);
 
-        return ApiResponse.builder().success(true).message("Password changed successfully.").build();
+        return MessageResponse.builder().success(true).message("Password changed successfully.").build();
     }
 
     @Transactional
-    public ApiResponse changeRegion(Long userId, ChangeRegionRequest request) {
+    public MessageResponse changeRegion(Long userId, ChangeRegionRequest request) {
         User user = findUser(userId);
         Region region = regionRepository.findById(request.getRegionId())
                 .orElseThrow(() -> new RuntimeException("Region not found."));
         user.setRegion(region);
         userRepository.save(user);
-        return ApiResponse.builder().success(true).message("Region updated successfully.").build();
+        return MessageResponse.builder().success(true).message("Region updated successfully.").build();
     }
 
     @Transactional
-    public ApiResponse changeLanguage(Long userId, ChangeLanguageRequest request) {
+    public MessageResponse changeLanguage(Long userId, ChangeLanguageRequest request) {
         User user = findUser(userId);
         user.setLanguage(request.getLanguage());
         userRepository.save(user);
-        return ApiResponse.builder().success(true).message("Language updated successfully.").build();
+        return MessageResponse.builder().success(true).message("Language updated successfully.").build();
     }
 
     /**
@@ -166,12 +166,12 @@ public class ProfileService {
      * The user will no longer be able to log in (isEnabled() returns false).
      */
     @Transactional
-    public ApiResponse deleteAccount(Long userId) {
+    public MessageResponse deleteAccount(Long userId) {
         User user = findUser(userId);
         user.setActive(false);
         userRepository.save(user);
         log.info("Account soft-deleted for user {}", userId);
-        return ApiResponse.builder().success(true).message("Account deleted successfully.").build();
+        return MessageResponse.builder().success(true).message("Account deleted successfully.").build();
     }
 
     /**

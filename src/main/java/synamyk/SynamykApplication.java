@@ -7,7 +7,6 @@ import synamyk.config.AnthropicConfig;
 import synamyk.config.FinikConfig;
 
 @SpringBootApplication
-@EnableConfigurationProperties({FinikConfig.class, AnthropicConfig.class})
 public class SynamykApplication {
 
     public static void main(String[] args) {

@@ -28,6 +28,9 @@ public class AnswerOption extends BaseEntity {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String text;
 
+    @Column(columnDefinition = "TEXT")
+    private String textKy;
+
     @Column(nullable = false)
     private Boolean isCorrect = false;
 

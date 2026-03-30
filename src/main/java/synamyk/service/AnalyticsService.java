@@ -13,6 +13,7 @@ import synamyk.enums.AnalyticsPeriod;
 import synamyk.repo.TestRepository;
 import synamyk.repo.TestSessionRepository;
 import synamyk.repo.VideoLessonRepository;
+import synamyk.util.L10n;
 
 import java.sql.Date;
 import java.time.LocalDate;
@@ -35,7 +36,7 @@ public class AnalyticsService {
      * Returns chart analytics for the given user.
      * When testId is null — aggregates across all tests ("Основной тест").
      */
-    public AnalyticsChartResponse getChart(Long userId, Long testId, AnalyticsPeriod period) {
+    public AnalyticsChartResponse getChart(Long userId, Long testId, AnalyticsPeriod period, String lang) {
         int days = periodToDays(period);
 
         LocalDateTime now = LocalDateTime.now();
@@ -79,7 +80,7 @@ public class AnalyticsService {
         if (testId != null) {
             Test test = testRepository.findById(testId)
                     .orElseThrow(() -> new RuntimeException("Test not found"));
-            testTitle = test.getTitle();
+            testTitle = L10n.pick(test.getTitle(), test.getTitleKy(), lang);
             resolvedTestId = testId;
         }
 
@@ -97,12 +98,12 @@ public class AnalyticsService {
      * Returns video lessons, optionally filtered by test.
      * When testId is null — returns all active lessons.
      */
-    public List<VideoLessonResponse> getVideos(Long testId) {
+    public List<VideoLessonResponse> getVideos(Long testId, String lang) {
         List<VideoLesson> lessons = testId != null
                 ? videoLessonRepository.findByTestIdAndActiveTrueOrderByOrderIndexAsc(testId)
                 : videoLessonRepository.findByActiveTrueOrderByOrderIndexAsc();
 
-        return lessons.stream().map(this::toResponse).toList();
+        return lessons.stream().map(l -> toResponse(l, lang)).toList();
     }
 
     @Transactional
@@ -121,7 +122,7 @@ public class AnalyticsService {
             builder.test(test);
         }
 
-        return toResponse(videoLessonRepository.save(builder.build()));
+        return toResponse(videoLessonRepository.save(builder.build()), "RU");
     }
 
     @Transactional
@@ -143,7 +144,7 @@ public class AnalyticsService {
             lesson.setTest(null);
         }
 
-        return toResponse(videoLessonRepository.save(lesson));
+        return toResponse(videoLessonRepository.save(lesson),"RU");
     }
 
     @Transactional
@@ -164,11 +165,11 @@ public class AnalyticsService {
         };
     }
 
-    private VideoLessonResponse toResponse(VideoLesson l) {
+    private VideoLessonResponse toResponse(VideoLesson l, String lang) {
         return VideoLessonResponse.builder()
                 .id(l.getId())
-                .title(l.getTitle())
-                .description(l.getDescription())
+                .title(L10n.pick(l.getTitle(), l.getTitleKy(), lang))
+                .description(L10n.pick(l.getDescription(), l.getDescriptionKy(), lang))
                 .thumbnailUrl(l.getThumbnailUrl())
                 .videoUrl(l.getVideoUrl())
                 .testId(l.getTest() != null ? l.getTest().getId() : null)

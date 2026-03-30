@@ -32,6 +32,7 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
     private final SmsProService smsService;
     private final ProfileService profileService;
+    private final RefreshTokenService refreshTokenService;
 
     /**
      * Step 1 of registration: create account with phone + password, send OTP.
@@ -52,6 +53,7 @@ public class AuthService {
                 .phone(formattedPhone)
                 .password(passwordEncoder.encode(request.getPassword()))
                 .role(Role.USER)
+                .language("RU")
                 .phoneVerified(false)
                 .active(true)
                 .build();
@@ -63,9 +65,11 @@ public class AuthService {
         smsService.sendOtp(formattedPhone, OTPCode.OtpType.REGISTRATION);
 
         String token = jwtService.generateToken(user, user.getPhone());
+        String refreshToken = refreshTokenService.createRefreshToken(user).getToken();
 
         return AuthResponse.builder()
                 .token(token)
+                .refreshToken(refreshToken)
                 .userId(user.getId())
                 .phone(user.getPhone())
                 .role(user.getRole().name())
@@ -95,9 +99,11 @@ public class AuthService {
         userRepository.save(user);
 
         String token = jwtService.generateToken(user, user.getPhone());
+        String refreshToken = refreshTokenService.createRefreshToken(user).getToken();
 
         return AuthResponse.builder()
                 .token(token)
+                .refreshToken(refreshToken)
                 .userId(user.getId())
                 .phone(user.getPhone())
                 .role(user.getRole().name())
@@ -120,9 +126,11 @@ public class AuthService {
         }
 
         String token = jwtService.generateToken(user, user.getPhone());
+        String refreshToken = refreshTokenService.createRefreshToken(user).getToken();
 
         return AuthResponse.builder()
                 .token(token)
+                .refreshToken(refreshToken)
                 .userId(user.getId())
                 .phone(user.getPhone())
                 .role(user.getRole().name())
@@ -158,6 +166,15 @@ public class AuthService {
         otpRepository.save(verifiedOtp);
 
         log.info("Password reset successfully for user: {}", user.getId());
+    }
+
+    public AuthResponse refreshToken(String refreshToken) {
+        return refreshTokenService.refresh(refreshToken);
+    }
+
+    @Transactional
+    public void logout(Long userId) {
+        refreshTokenService.revokeAllForUser(userId);
     }
 
     private String formatPhone(String phone) {

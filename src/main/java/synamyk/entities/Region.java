@@ -19,4 +19,7 @@ public class Region extends BaseEntity {
 
     @Column(nullable = false)
     private String name;
+
+    @Column
+    private String nameKy;
 }

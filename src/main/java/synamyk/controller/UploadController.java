@@ -1,6 +1,8 @@
 package synamyk.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.Builder;
 import lombok.Data;
@@ -18,7 +20,8 @@ import synamyk.service.MinioService;
 @RestController
 @RequestMapping("/api/upload")
 @RequiredArgsConstructor
-@Tag(name = "Upload", description = "Image upload to MinIO storage")
+@Tag(name = "Загрузка файлов", description = "Загрузка изображений в MinIO. Возвращает публичный URL для сохранения в полях avatarUrl / coverImageUrl / thumbnailUrl.")
+@SecurityRequirement(name = "Bearer")
 public class UploadController {
 
     private final MinioService minioService;
@@ -37,15 +40,21 @@ public class UploadController {
      */
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(
-            summary = "Upload image",
-            description = "Uploads an image (max 10 MB) to MinIO and returns a permanent public URL. " +
-                    "Store the returned URL in the corresponding field (avatarUrl, coverImageUrl, thumbnailUrl)."
+            summary = "Загрузить изображение",
+            description = "Загружает изображение (до 10 МБ, только image/*) в MinIO и возвращает постоянный публичный URL.\n\n" +
+                    "**Типы и пути хранения:**\n\n" +
+                    "| type | Куда сохранять URL |\n" +
+                    "|------|-------------------|\n" +
+                    "| `AVATAR` | `PUT /api/profile` → `avatarUrl` |\n" +
+                    "| `NEWS_COVER` | `POST/PUT /api/admin/news` → `coverImageUrl` |\n" +
+                    "| `VIDEO_THUMBNAIL` | `POST/PUT /api/admin/videos` → `thumbnailUrl` |\n\n" +
+                    "Для `AVATAR` поле `entityId` подставляется автоматически."
     )
     public ResponseEntity<UploadResponse> upload(
             @AuthenticationPrincipal UserDetails userDetails,
             @RequestPart("file") MultipartFile file,
-            @RequestParam MediaFileType type,
-            @RequestParam(defaultValue = "general") String entityId) {
+            @Parameter(description = "Тип файла: AVATAR, NEWS_COVER, VIDEO_THUMBNAIL") @RequestParam MediaFileType type,
+            @Parameter(description = "ID сущности (для AVATAR не нужен — берётся автоматически)") @RequestParam(defaultValue = "general") String entityId) {
 
         // For AVATAR, default entityId to the current user's id
         if (type == MediaFileType.AVATAR) {

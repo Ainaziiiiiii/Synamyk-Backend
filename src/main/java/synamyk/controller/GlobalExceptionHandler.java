@@ -8,7 +8,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import synamyk.dto.ApiResponse;
+import synamyk.dto.MessageResponse;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -17,20 +17,20 @@ import java.util.Map;
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(RuntimeException.class)
-    public ResponseEntity<ApiResponse> handleRuntimeException(RuntimeException ex) {
-        return ResponseEntity.badRequest().body(new ApiResponse(false, ex.getMessage()));
+    public ResponseEntity<MessageResponse> handleRuntimeException(RuntimeException ex) {
+        return ResponseEntity.badRequest().body(new MessageResponse(false, ex.getMessage()));
     }
 
     @ExceptionHandler(BadCredentialsException.class)
-    public ResponseEntity<ApiResponse> handleBadCredentials(BadCredentialsException ex) {
+    public ResponseEntity<MessageResponse> handleBadCredentials(BadCredentialsException ex) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                .body(new ApiResponse(false, "Неверный номер или пароль."));
+                .body(new MessageResponse(false, "Неверный номер или пароль."));
     }
 
     @ExceptionHandler(DisabledException.class)
-    public ResponseEntity<ApiResponse> handleDisabled(DisabledException ex) {
+    public ResponseEntity<MessageResponse> handleDisabled(DisabledException ex) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                .body(new ApiResponse(false, "Аккаунт отключён или номер не подтверждён."));
+                .body(new MessageResponse(false, "Аккаунт отключён или номер не подтверждён."));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

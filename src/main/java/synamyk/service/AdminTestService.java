@@ -38,7 +38,9 @@ public class AdminTestService {
     public AdminTestResponse createTest(CreateTestRequest request) {
         Test test = Test.builder()
                 .title(request.getTitle())
+                .titleKy(request.getTitleKy())
                 .description(request.getDescription())
+                .descriptionKy(request.getDescriptionKy())
                 .iconUrl(request.getIconUrl())
                 .price(request.getPrice())
                 .active(true)
@@ -51,7 +53,9 @@ public class AdminTestService {
         Test test = testRepository.findById(testId)
                 .orElseThrow(() -> new RuntimeException("Test not found"));
         test.setTitle(request.getTitle());
+        test.setTitleKy(request.getTitleKy());
         test.setDescription(request.getDescription());
+        test.setDescriptionKy(request.getDescriptionKy());
         test.setIconUrl(request.getIconUrl());
         test.setPrice(request.getPrice());
         return toAdminTestResponse(testRepository.save(test));
@@ -99,7 +103,9 @@ public class AdminTestService {
         SubTest subTest = SubTest.builder()
                 .test(test)
                 .title(request.getTitle())
+                .titleKy(request.getTitleKy())
                 .levelName(request.getLevelName())
+                .levelNameKy(request.getLevelNameKy())
                 .levelOrder(request.getLevelOrder())
                 .isPaid(request.getIsPaid() != null && request.getIsPaid())
                 .durationMinutes(request.getDurationMinutes())
@@ -116,7 +122,9 @@ public class AdminTestService {
                 .orElseThrow(() -> new RuntimeException("SubTest not found"));
 
         subTest.setTitle(request.getTitle());
+        subTest.setTitleKy(request.getTitleKy());
         subTest.setLevelName(request.getLevelName());
+        subTest.setLevelNameKy(request.getLevelNameKy());
         subTest.setLevelOrder(request.getLevelOrder());
         subTest.setIsPaid(request.getIsPaid() != null && request.getIsPaid());
         subTest.setDurationMinutes(request.getDurationMinutes());
@@ -154,9 +162,12 @@ public class AdminTestService {
         Question question = Question.builder()
                 .subTest(subTest)
                 .text(request.getText())
+                .textKy(request.getTextKy())
                 .sectionName(request.getSectionName())
+                .sectionNameKy(request.getSectionNameKy())
                 .imageUrl(request.getImageUrl())
                 .explanation(request.getExplanation())
+                .explanationKy(request.getExplanationKy())
                 .orderIndex(request.getOrderIndex())
                 .pointValue(request.getPointValue())
                 .active(true)
@@ -170,6 +181,7 @@ public class AdminTestService {
                     .question(question)
                     .label(optReq.getLabel())
                     .text(optReq.getText())
+                    .textKy(optReq.getTextKy())
                     .isCorrect(Boolean.TRUE.equals(optReq.getIsCorrect()))
                     .orderIndex(optIndex++)
                     .build();
@@ -185,9 +197,12 @@ public class AdminTestService {
                 .orElseThrow(() -> new RuntimeException("Question not found"));
 
         question.setText(request.getText());
+        question.setTextKy(request.getTextKy());
         question.setSectionName(request.getSectionName());
+        question.setSectionNameKy(request.getSectionNameKy());
         question.setImageUrl(request.getImageUrl());
         question.setExplanation(request.getExplanation());
+        question.setExplanationKy(request.getExplanationKy());
         question.setOrderIndex(request.getOrderIndex());
         question.setPointValue(request.getPointValue());
 
@@ -201,6 +216,7 @@ public class AdminTestService {
                     .question(question)
                     .label(optReq.getLabel())
                     .text(optReq.getText())
+                    .textKy(optReq.getTextKy())
                     .isCorrect(Boolean.TRUE.equals(optReq.getIsCorrect()))
                     .orderIndex(optIndex++)
                     .build();
@@ -225,7 +241,9 @@ public class AdminTestService {
         return AdminTestResponse.builder()
                 .id(test.getId())
                 .title(test.getTitle())
+                .titleKy(test.getTitleKy())
                 .description(test.getDescription())
+                .descriptionKy(test.getDescriptionKy())
                 .iconUrl(test.getIconUrl())
                 .price(test.getPrice())
                 .active(test.getActive())
@@ -237,7 +255,9 @@ public class AdminTestService {
         return AdminTestResponse.AdminSubTestResponse.builder()
                 .id(st.getId())
                 .title(st.getTitle())
+                .titleKy(st.getTitleKy())
                 .levelName(st.getLevelName())
+                .levelNameKy(st.getLevelNameKy())
                 .levelOrder(st.getLevelOrder())
                 .isPaid(st.getIsPaid())
                 .durationMinutes(st.getDurationMinutes())
@@ -253,6 +273,7 @@ public class AdminTestService {
                         .id(o.getId())
                         .label(o.getLabel())
                         .text(o.getText())
+                        .textKy(o.getTextKy())
                         .isCorrect(o.getIsCorrect())
                         .orderIndex(o.getOrderIndex())
                         .build())
@@ -261,9 +282,12 @@ public class AdminTestService {
         return AdminQuestionResponse.builder()
                 .id(q.getId())
                 .sectionName(q.getSectionName())
+                .sectionNameKy(q.getSectionNameKy())
                 .text(q.getText())
+                .textKy(q.getTextKy())
                 .imageUrl(q.getImageUrl())
                 .explanation(q.getExplanation())
+                .explanationKy(q.getExplanationKy())
                 .orderIndex(q.getOrderIndex())
                 .pointValue(q.getPointValue())
                 .active(q.getActive())

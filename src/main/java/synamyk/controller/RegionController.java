@@ -15,13 +15,13 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/regions")
 @RequiredArgsConstructor
-@Tag(name = "Regions", description = "Get list of regions")
+@Tag(name = "Регионы", description = "Справочник регионов Кыргызстана. Публичный эндпоинт — JWT не требуется.")
 public class RegionController {
 
     private final RegionService regionService;
 
     @GetMapping
-    @Operation(summary = "Get all regions")
+    @Operation(summary = "Список всех регионов", description = "Используется при регистрации и смене региона в профиле.")
     public ResponseEntity<List<RegionDto>> getRegions() {
         return ResponseEntity.ok(regionService.getAllRegions());
     }
