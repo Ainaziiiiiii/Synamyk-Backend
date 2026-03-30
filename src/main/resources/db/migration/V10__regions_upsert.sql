@@ -1,7 +1,6 @@
--- Safe upsert of all Kyrgyzstan regions with RU + KY names.
--- Works on both fresh DB and existing DB.
+-- Upsert all Kyrgyzstan regions with RU + KY names.
+-- Safe to run on both fresh DB and existing DB with data already seeded.
 
--- Remove duplicates before adding unique constraint
 DELETE FROM regions
 WHERE id NOT IN (
     SELECT MIN(id) FROM regions GROUP BY name
