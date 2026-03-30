@@ -48,11 +48,11 @@ anthropic:
   base-url: https://api.anthropic.com
 
 minio:
-  url: ${MINIO_URL:https://t3.storageapi.dev}
-  access-key: ${MINIO_ACCESS_KEY:tid_aJGbHqsBDmeowWtqumTDArXwNunIgkRdQJNMSGJyxJqqPdVuHt}
-  secret-key: ${MINIO_SECRET_KEY:tsec_9FiVEXo5kqDMJvu-FFX9BIDD-TALLDm5aaljUSmDTfngR22XIdfVmh2r7Ei--I6sLWq0Eb}
-  bucket: ${MINIO_BUCKET:wrapped-basketcase-eqr42p}
-  region: ${MINIO_REGION:auto}
+  url: ${AWS_ENDPOINT_URL}
+  access-key: ${AWS_ACCESS_KEY_ID}
+  secret-key: ${AWS_SECRET_ACCESS_KEY}
+  bucket: ${AWS_S3_BUCKET_NAME}
+  region: ${AWS_DEFAULT_REGION}
 
 admin:
   phone: ${ADMIN_PHONE:+996700000000}
