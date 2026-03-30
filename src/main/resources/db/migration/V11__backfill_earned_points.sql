@@ -1,9 +1,15 @@
--- Add earned_points column if not already added by Hibernate ddl-auto
-ALTER TABLE test_sessions ADD COLUMN IF NOT EXISTS earned_points INTEGER NOT NULL DEFAULT 0;
+-- Add columns (nullable first to handle existing rows)
+ALTER TABLE test_sessions ADD COLUMN IF NOT EXISTS earned_points INTEGER;
 ALTER TABLE test_sessions ADD COLUMN IF NOT EXISTS paused_at TIMESTAMP;
 
--- Backfill earned_points for completed sessions:
--- sum pointValue of all correctly answered questions in each session
+-- Fill nulls with 0 before adding NOT NULL constraint
+UPDATE test_sessions SET earned_points = 0 WHERE earned_points IS NULL;
+
+-- Now apply NOT NULL constraint
+ALTER TABLE test_sessions ALTER COLUMN earned_points SET NOT NULL;
+ALTER TABLE test_sessions ALTER COLUMN earned_points SET DEFAULT 0;
+
+-- Backfill earned_points for completed sessions
 UPDATE test_sessions ts
 SET earned_points = COALESCE((
     SELECT SUM(q.point_value)
