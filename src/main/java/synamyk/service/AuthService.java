@@ -81,10 +81,8 @@ public class AuthService {
      * Step 3 of registration: save firstName, lastName, region after OTP verification.
      */
     @Transactional
-    public AuthResponse completeProfile(CompleteProfileRequest request) {
-        String formattedPhone = formatPhone(request.getPhone());
-
-        User user = userRepository.findByPhone(formattedPhone)
+    public AuthResponse completeProfile(CompleteProfileRequest request, Long userId) {
+        User user = userRepository.findById(userId)
                 .orElseThrow(() -> new AppException("Пользователь не найден.", "Колдонуучу табылган жок."));
 
         if (!user.getPhoneVerified()) {

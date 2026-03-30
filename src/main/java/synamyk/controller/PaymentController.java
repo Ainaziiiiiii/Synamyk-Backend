@@ -1,15 +1,15 @@
 package synamyk.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
-import synamyk.dto.CreatePaymentRequest;
 import synamyk.dto.CreatePaymentResponse;
+import synamyk.dto.InitPaymentResponse;
 import synamyk.entities.User;
 import synamyk.service.PaymentService;
 
@@ -20,37 +20,35 @@ import java.util.UUID;
 @RequestMapping("/api/payments")
 @RequiredArgsConstructor
 @Tag(name = "Payments", description = "Finik payment endpoints")
+@SecurityRequirement(name = "Bearer")
 public class PaymentController {
 
     private final PaymentService paymentService;
 
     /**
-     * Create a Finik payment to unlock all paid sub-tests of a test.
+     * Step 1 for Flutter finik_sdk integration.
+     *
+     * Flutter usage:
+     *   1. Call POST /api/payments/init?testId={id}
+     *   2. Use the returned values in CreateItemHandlerWidget:
+     *      - requestId = paymentId
+     *      - accountId = accountId
+     *      - amount = FixedAmount(amount)
+     *      - nameEn = nameEn
+     *      - callbackUrl = callbackUrl
+     *      - requiredFields = [RequiredField(fieldId: "paymentId", value: paymentId.toString(), isHidden: true)]
      */
-    @PostMapping("/create")
-    @Operation(summary = "Провести оплату")
-    public ResponseEntity<CreatePaymentResponse> createPayment(
-            @Valid @RequestBody CreatePaymentRequest request,
+    @PostMapping("/init")
+    @Operation(
+            summary = "Инициировать платеж",
+            description = "Создает запись платежа в БД и возвращает параметры для Flutter ")
+    public ResponseEntity<InitPaymentResponse> initPayment(
+            @RequestParam Long testId,
             Authentication authentication) {
-        try {
-            User user = (User) authentication.getPrincipal();
-            CreatePaymentResponse response = paymentService.createPayment(
-                    user.getId(), request.getTestId(), request.getRedirectUrl());
-            return ResponseEntity.ok(response);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().build();
-        } catch (RuntimeException e) {
-            log.error("Payment error: {}", e.getMessage());
-            return ResponseEntity.unprocessableEntity().build();
-        } catch (Exception e) {
-            log.error("Unexpected payment error", e);
-            return ResponseEntity.internalServerError().build();
-        }
+        User user = (User) authentication.getPrincipal();
+        return ResponseEntity.ok(paymentService.initPayment(user.getId(), testId));
     }
 
-    /**
-     * Check payment status by paymentId.
-     */
     @GetMapping("/{paymentId}")
     @Operation(summary = "Проверка статуса платежа")
     public ResponseEntity<CreatePaymentResponse> getPaymentStatus(@PathVariable String paymentId) {

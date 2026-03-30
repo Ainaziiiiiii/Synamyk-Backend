@@ -40,11 +40,12 @@ public interface TestSessionRepository extends JpaRepository<TestSession, Long> 
             SELECT s.user.id,
                    s.user.firstName,
                    s.user.lastName,
+                   s.user.phone,
                    MAX(s.earnedPoints)
             FROM TestSession s
             WHERE s.subTest.test.id = :testId
               AND s.status = 'COMPLETED'
-            GROUP BY s.user.id, s.user.firstName, s.user.lastName
+            GROUP BY s.user.id, s.user.firstName, s.user.lastName, s.user.phone
             ORDER BY MAX(s.earnedPoints) DESC
             """)
     List<Object[]> findRankingByTestId(@Param("testId") Long testId);

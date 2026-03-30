@@ -14,7 +14,6 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 import synamyk.dto.*;
 import synamyk.entities.OTPCode;
-import synamyk.repo.UserRepository;
 import synamyk.service.AuthService;
 import synamyk.service.SmsProService;
 
@@ -26,7 +25,6 @@ public class  AuthController {
 
     private final AuthService authService;
     private final SmsProService smsProService;
-    private final UserRepository userRepository;
 
     @PostMapping("/register")
     @Operation(
@@ -62,15 +60,20 @@ public class  AuthController {
     }
 
     @PostMapping("/complete-profile")
+    @SecurityRequirement(name = "Bearer")
     @Operation(
             summary = "Шаг 3 — заполнение профиля",
             description = "Сохраняет имя, фамилию и регион пользователя после верификации OTP. " +
+                    "Требует JWT-токен из шага 1 (регистрации). " +
                     "Список регионов: GET /api/regions. " +
                     "Возвращает финальный JWT-токен для авторизации."
     )
     @ApiResponse(responseCode = "200", description = "Профиль заполнен, JWT-токен готов")
-    public ResponseEntity<AuthResponse> completeProfile(@Valid @RequestBody CompleteProfileRequest request) {
-        return ResponseEntity.ok(authService.completeProfile(request));
+    public ResponseEntity<AuthResponse> completeProfile(
+            @Valid @RequestBody CompleteProfileRequest request,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        synamyk.entities.User user = (synamyk.entities.User) userDetails;
+        return ResponseEntity.ok(authService.completeProfile(request, user.getId()));
     }
 
     @PostMapping("/login")

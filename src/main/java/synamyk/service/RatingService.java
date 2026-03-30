@@ -40,14 +40,15 @@ public class RatingService {
             Long userId    = ((Number) row[0]).longValue();
             String firstName = (String) row[1];
             String lastName  = (String) row[2];
-            int score      = ((Number) row[3]).intValue();
+            String phone     = (String) row[3];
+            int score      = ((Number) row[4]).intValue();
 
             // Handle ties: same score → same rank
             if (score != prevScore) {
                 displayRank = rank;
             }
 
-            String fullName = buildFullName(firstName, lastName);
+            String fullName = buildFullName(firstName, lastName, phone);
 
             entries.add(RatingEntryResponse.builder()
                     .rank(displayRank)
@@ -83,8 +84,14 @@ public class RatingService {
                 .toList();
     }
 
-    private String buildFullName(String firstName, String lastName) {
-        if (firstName == null && lastName == null) return "—";
+    private String buildFullName(String firstName, String lastName, String phone) {
+        if (firstName == null && lastName == null) {
+            // Mask phone: +996700123456 → +996700***456
+            if (phone != null && phone.length() > 6) {
+                return phone.substring(0, phone.length() - 6) + "***" + phone.substring(phone.length() - 3);
+            }
+            return phone != null ? phone : "—";
+        }
         if (firstName == null) return lastName;
         if (lastName == null) return firstName;
         return firstName + " " + lastName;

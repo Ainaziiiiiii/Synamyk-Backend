@@ -41,7 +41,13 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
-                                "/api/auth/**",
+                                "/api/auth/register",
+                                "/api/auth/verify-otp",
+                                "/api/auth/login",
+                                "/api/auth/send-otp",
+                                "/api/auth/resend-otp",
+                                "/api/auth/reset-password",
+                                "/api/auth/refresh",
                                 "/api/regions",
                                 "/api/webhooks/**",
                                 "/api/feed/**",
