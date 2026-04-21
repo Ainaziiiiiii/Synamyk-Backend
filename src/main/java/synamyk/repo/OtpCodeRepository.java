@@ -31,7 +31,7 @@ public interface OtpCodeRepository extends JpaRepository<OTPCode, Long> {
             @Param("now") LocalDateTime now
     );
 
-    Optional<OTPCode> findByPhoneAndTypeAndVerifiedFalse(String phone, OTPCode.@NotNull OtpType type);
+    Optional<OTPCode> findFirstByPhoneAndTypeAndVerifiedFalseOrderByCreatedAtDesc(String phone, OTPCode.@NotNull OtpType type);
 
     List<OTPCode> findByPhoneAndTypeAndVerifiedFalseOrderByCreatedAtDesc(String phone, OTPCode.@NotNull OtpType type);
 }

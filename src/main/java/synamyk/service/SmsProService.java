@@ -61,7 +61,7 @@ public class SmsProService {
         String messageId = generateMessageId();
 
         // Check for existing active OTP
-        otpCodeRepository.findByPhoneAndTypeAndVerifiedFalse(formattedPhone, type)
+        otpCodeRepository.findFirstByPhoneAndTypeAndVerifiedFalseOrderByCreatedAtDesc(formattedPhone, type)
                 .ifPresent(existingOtp -> {
                     if (!existingOtp.isExpired()) {
                         log.warn("Active OTP already exists for phone: {}", formattedPhone);

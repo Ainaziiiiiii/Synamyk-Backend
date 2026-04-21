@@ -67,10 +67,9 @@ public class AuthService {
                         .build();
 
             } else if (existing.getFirstName() == null) {
-                // Случай 2: прошёл шаг 1 и 2, но не заполнил профиль — проверяем пароль и выдаём токен
-                if (!passwordEncoder.matches(request.getPassword(), existing.getPassword())) {
-                    throw new AppException("Неверный пароль.", "Сырсөз туура эмес.");
-                }
+                // Случай 2: телефон подтверждён, но профиль не заполнен — обновляем пароль и выдаём токен
+                existing.setPassword(passwordEncoder.encode(request.getPassword()));
+                userRepository.save(existing);
 
                 String token = jwtService.generateToken(existing, existing.getPhone());
                 String refreshToken = refreshTokenService.createRefreshToken(existing).getToken();
