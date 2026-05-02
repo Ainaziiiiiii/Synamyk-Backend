@@ -39,4 +39,12 @@ public class NewsArticle extends BaseEntity {
 
     @Column(nullable = false)
     private Boolean active = true;
+
+    @Column(length = 50)
+    @Builder.Default
+    private String type = "NEWS";
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Integer viewCount = 0;
 }

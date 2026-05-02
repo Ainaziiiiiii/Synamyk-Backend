@@ -45,4 +45,11 @@ public class VideoLesson extends BaseEntity {
 
     @Column(nullable = false)
     private Boolean active = true;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Integer viewCount = 0;
+
+    @Column
+    private Integer durationSeconds;
 }

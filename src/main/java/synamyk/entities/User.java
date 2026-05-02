@@ -58,6 +58,9 @@ public class  User extends BaseEntity implements UserDetails {
     @Column(length = 1000)
     private String avatarUrl;
 
+    @Column(length = 255)
+    private String email;
+
     /** Interface language preference: RU or KY. */
     @Column(nullable = false, length = 10)
     @Builder.Default

@@ -12,6 +12,8 @@ import org.springframework.web.bind.annotation.*;
 import synamyk.dto.admin.*;
 import synamyk.service.AdminTestService;
 
+import org.springframework.data.domain.Page;
+
 import java.util.List;
 
 @RestController
@@ -26,10 +28,23 @@ public class AdminTestController {
     // ===== ТЕСТЫ =====
 
     @GetMapping("/tests")
-    @Operation(summary = "Список всех тестов (включая неактивные)", description = "Возвращает все тесты со вложенными подтестами для панели администратора.")
-    @ApiResponse(responseCode = "200", description = "Список тестов")
-    public ResponseEntity<List<AdminTestResponse>> getAllTests() {
-        return ResponseEntity.ok(adminTestService.getAllTests());
+    @Operation(summary = "Список тестов (пагинация + фильтры)",
+            description = "Передай `full=true` чтобы получить полный список с подтестами (без пагинации). По умолчанию — краткий список для таблицы.")
+    public ResponseEntity<?> getAllTests(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String subject,
+            @RequestParam(required = false) Boolean active,
+            @RequestParam(defaultValue = "false") boolean full) {
+        if (full) return ResponseEntity.ok(adminTestService.getAllTests());
+        return ResponseEntity.ok(adminTestService.listTests(page, size, search, subject, active));
+    }
+
+    @GetMapping("/tests/subjects")
+    @Operation(summary = "Список предметов (уникальные значения subject)")
+    public ResponseEntity<List<String>> getSubjects() {
+        return ResponseEntity.ok(adminTestService.getSubjects());
     }
 
     @GetMapping("/tests/{testId}")

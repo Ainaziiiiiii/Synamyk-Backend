@@ -6,10 +6,13 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import synamyk.dto.VideoLessonResponse;
+import synamyk.dto.admin.AdminVideoListResponse;
 import synamyk.dto.admin.CreateVideoLessonRequest;
+import synamyk.service.AdminVideoService;
 import synamyk.service.AnalyticsService;
 
 @RestController
@@ -20,6 +23,24 @@ import synamyk.service.AnalyticsService;
 public class AdminVideoController {
 
     private final AnalyticsService analyticsService;
+    private final AdminVideoService adminVideoService;
+
+    @GetMapping
+    @Operation(summary = "Список всех видеоуроков (с пагинацией и фильтрами)")
+    public ResponseEntity<Page<AdminVideoListResponse>> list(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) Long testId,
+            @RequestParam(required = false) Boolean active) {
+        return ResponseEntity.ok(adminVideoService.list(page, size, search, testId, active));
+    }
+
+    @PatchMapping("/{id}/status")
+    @Operation(summary = "Переключить статус видеоурока")
+    public ResponseEntity<AdminVideoListResponse> toggleStatus(@PathVariable Long id) {
+        return ResponseEntity.ok(adminVideoService.toggleStatus(id));
+    }
 
     @PostMapping
     @Operation(summary = "Создать видеоурок",

@@ -6,11 +6,17 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import synamyk.dto.NewsDetailResponse;
+import synamyk.dto.admin.AdminNewsListResponse;
 import synamyk.dto.admin.CreateNewsRequest;
+import synamyk.service.AdminNewsService;
 import synamyk.service.NewsService;
+
+import java.time.LocalDate;
 
 @RestController
 @RequestMapping("/api/admin/news")
@@ -20,6 +26,27 @@ import synamyk.service.NewsService;
 public class AdminFeedController {
 
     private final NewsService newsService;
+    private final AdminNewsService adminNewsService;
+
+    @GetMapping
+    @Operation(summary = "Список всех новостей (с пагинацией и фильтрами)",
+            description = "Фильтры: search, type, active, dateFrom, dateTo")
+    public ResponseEntity<Page<AdminNewsListResponse>> list(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String type,
+            @RequestParam(required = false) Boolean active,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateFrom,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateTo) {
+        return ResponseEntity.ok(adminNewsService.list(page, size, search, type, active, dateFrom, dateTo));
+    }
+
+    @PatchMapping("/{id}/status")
+    @Operation(summary = "Переключить статус новости (активна/скрыта)")
+    public ResponseEntity<AdminNewsListResponse> toggleStatus(@PathVariable Long id) {
+        return ResponseEntity.ok(adminNewsService.toggleStatus(id));
+    }
 
     @PostMapping
     @Operation(summary = "Создать новостную статью")

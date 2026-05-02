@@ -2,6 +2,8 @@ package synamyk.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import synamyk.dto.admin.*;
@@ -30,6 +32,27 @@ public class AdminTestService {
                 .toList();
     }
 
+    public Page<AdminTestListResponse> listTests(int page, int size, String search, String subject, Boolean active) {
+        String s = (search != null && !search.isBlank()) ? search.trim() : null;
+        String sub = (subject != null && !subject.isBlank()) ? subject.trim() : null;
+        return testRepository.findAllByFilters(s, sub, active, PageRequest.of(page, size))
+                .map(t -> AdminTestListResponse.builder()
+                        .id(t.getId())
+                        .title(t.getTitle())
+                        .iconUrl(minioService.presign(t.getIconUrl()))
+                        .subject(t.getSubject())
+                        .price(t.getPrice())
+                        .questionCount(testRepository.countQuestionsByTestId(t.getId()))
+                        .attemptsCount(testRepository.countAttemptsByTestId(t.getId()))
+                        .createdAt(t.getCreatedAt())
+                        .active(t.getActive())
+                        .build());
+    }
+
+    public List<String> getSubjects() {
+        return testRepository.findAllSubjects();
+    }
+
     public AdminTestResponse getTest(Long testId) {
         Test test = testRepository.findById(testId)
                 .orElseThrow(() -> new AppException("Тест не найден.", "Тест табылган жок."));
@@ -44,6 +67,7 @@ public class AdminTestService {
                 .description(request.getDescription())
                 .descriptionKy(request.getDescriptionKy())
                 .iconUrl(request.getIconUrl())
+                .subject(request.getSubject())
                 .price(request.getPrice())
                 .active(true)
                 .build();
@@ -59,6 +83,7 @@ public class AdminTestService {
         test.setDescription(request.getDescription());
         test.setDescriptionKy(request.getDescriptionKy());
         test.setIconUrl(request.getIconUrl());
+        test.setSubject(request.getSubject());
         test.setPrice(request.getPrice());
         return toAdminTestResponse(testRepository.save(test));
     }

@@ -115,6 +115,7 @@ public class AnalyticsService {
                 .thumbnailUrl(request.getThumbnailUrl())
                 .videoUrl(request.getVideoUrl())
                 .orderIndex(request.getOrderIndex() != null ? request.getOrderIndex() : 0)
+                .durationSeconds(request.getDurationSeconds())
                 .active(true);
 
         if (request.getTestId() != null) {
@@ -136,6 +137,7 @@ public class AnalyticsService {
         lesson.setThumbnailUrl(request.getThumbnailUrl());
         lesson.setVideoUrl(request.getVideoUrl());
         if (request.getOrderIndex() != null) lesson.setOrderIndex(request.getOrderIndex());
+        if (request.getDurationSeconds() != null) lesson.setDurationSeconds(request.getDurationSeconds());
 
         if (request.getTestId() != null) {
             Test test = testRepository.findById(request.getTestId())

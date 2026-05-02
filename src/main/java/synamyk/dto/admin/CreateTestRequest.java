@@ -27,6 +27,9 @@ public class CreateTestRequest {
     @Schema(description = "URL to test icon image")
     private String iconUrl;
 
+    @Schema(description = "Subject / category (e.g. Математика, ОРТ, Логика)", example = "Математика")
+    private String subject;
+
     @NotNull
     @Schema(description = "Price to unlock all paid sub-tests", example = "500.00")
     private BigDecimal price;

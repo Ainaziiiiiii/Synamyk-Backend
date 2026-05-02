@@ -51,6 +51,7 @@ public class NewsService {
                 .content(request.getContent())
                 .contentKy(request.getContentKy())
                 .publishedAt(request.getPublishedAt())
+                .type(request.getType() != null ? request.getType() : "NEWS")
                 .active(true)
                 .build();
         return toDetailResponse(newsRepository.save(article));
@@ -67,6 +68,7 @@ public class NewsService {
         article.setContent(request.getContent());
         article.setContentKy(request.getContentKy());
         article.setPublishedAt(request.getPublishedAt());
+        if (request.getType() != null) article.setType(request.getType());
         return toDetailResponse(newsRepository.save(article));
     }
 

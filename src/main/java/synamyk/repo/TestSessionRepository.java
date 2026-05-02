@@ -94,4 +94,33 @@ public interface TestSessionRepository extends JpaRepository<TestSession, Long> 
             @Param("from") LocalDateTime from,
             @Param("to") LocalDateTime to
     );
+
+    @Query("SELECT COUNT(ts) FROM TestSession ts WHERE ts.status = 'COMPLETED' AND ts.completedAt >= :from")
+    long countCompletedAfter(@Param("from") LocalDateTime from);
+
+    @Query("SELECT s.user.id, s.user.firstName, s.user.lastName, s.user.phone, SUM(s.earnedPoints)"
+            + " FROM TestSession s"
+            + " WHERE s.status = 'COMPLETED'"
+            + " AND (:from IS NULL OR s.completedAt >= :from)"
+            + " AND (:to IS NULL OR s.completedAt <= :to)"
+            + " GROUP BY s.user.id, s.user.firstName, s.user.lastName, s.user.phone"
+            + " ORDER BY SUM(s.earnedPoints) DESC")
+    List<Object[]> findGlobalRanking(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
+
+    @Query(value = "SELECT t.subject,"
+            + " CASE WHEN COUNT(ts.id) = 0 THEN 0.0"
+            + "      ELSE ROUND(CAST(SUM(CASE WHEN ts.status = 'COMPLETED' THEN 1 ELSE 0 END) AS DECIMAL) / COUNT(ts.id) * 100, 1)"
+            + " END"
+            + " FROM tests t"
+            + " LEFT JOIN sub_tests st ON st.test_id = t.id"
+            + " LEFT JOIN test_sessions ts ON ts.sub_test_id = st.id"
+            + " WHERE t.subject IS NOT NULL"
+            + " GROUP BY t.subject"
+            + " ORDER BY t.subject",
+            nativeQuery = true)
+    List<Object[]> findSuccessRateBySubject();
+
+    @org.springframework.data.jpa.repository.Modifying
+    @Query("UPDATE TestSession ts SET ts.earnedPoints = 0 WHERE ts.status = 'COMPLETED'")
+    void resetAllEarnedPoints();
 }

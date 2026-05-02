@@ -36,6 +36,9 @@ public class Test extends BaseEntity {
     @Column
     private String iconUrl;
 
+    @Column(length = 100)
+    private String subject;
+
     /**
      * Price to unlock all paid sub-tests of this test.
      */

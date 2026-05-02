@@ -28,6 +28,9 @@ public class CreateNewsRequest {
     @Schema(description = "Full article content in Kyrgyz")
     private String contentKy;
 
+    @Schema(description = "Type: NEWS, ARTICLE, ANNOUNCEMENT", example = "NEWS")
+    private String type;
+
     @NotNull
     @Schema(description = "Publication date-time", example = "2026-03-30T12:00:00")
     private LocalDateTime publishedAt;

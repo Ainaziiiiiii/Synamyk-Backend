@@ -80,6 +80,13 @@
             <optional>true</optional>
         </dependency>
 
+        <!-- Apache POI for Excel export -->
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi-ooxml</artifactId>
+            <version>5.3.0</version>
+        </dependency>
+
         <!-- MinIO S3-compatible storage -->
         <dependency>
             <groupId>io.minio</groupId>

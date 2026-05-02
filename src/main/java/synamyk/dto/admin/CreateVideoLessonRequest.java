@@ -33,4 +33,7 @@ public class CreateVideoLessonRequest {
 
     @Schema(description = "Display order (lower = first)", example = "0")
     private Integer orderIndex = 0;
+
+    @Schema(description = "Video duration in seconds", example = "754")
+    private Integer durationSeconds;
 }
