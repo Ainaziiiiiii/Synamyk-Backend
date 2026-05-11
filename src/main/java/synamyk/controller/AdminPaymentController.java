@@ -30,7 +30,7 @@ public class AdminPaymentController {
 
     private final AdminPaymentService adminPaymentService;
 
-    
+
     @GetMapping
     @Operation(
             summary = "Список платежей",

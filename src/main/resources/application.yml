@@ -38,9 +38,9 @@ sms:
   smspro:
     enabled: ${SMS_ENABLED:true}
     url: ${SMSPRO_URL:https://smspro.nikita.kg/api/message}
-    login: ${SMSPRO_LOGIN:Cholpon123456}
-    password: ${SMSPRO_PASSWORD:6EX5vJf8}
-    sender: ${SMSPRO_SENDER:BilgirimKG}
+    login: ${SMSPRO_LOGIN:GreenEcoMall}
+    password: ${SMSPRO_PASSWORD:5v9jSKji}
+    sender: ${SMSPRO_SENDER:SMSPRO}
     ttl-minutes: ${SMSPRO_TTL:5}
 
 anthropic:
