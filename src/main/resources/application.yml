@@ -40,7 +40,7 @@ sms:
     url: ${SMSPRO_URL:https://smspro.nikita.kg/api/message}
     login: ${SMSPRO_LOGIN:GreenEcoMall}
     password: ${SMSPRO_PASSWORD:5v9jSKji}
-    sender: ${SMSPRO_SENDER:SMSPRO}
+    sender: ${SMSPRO_SENDER:SMSPRO.KG}
     ttl-minutes: ${SMSPRO_TTL:5}
 
 anthropic:
