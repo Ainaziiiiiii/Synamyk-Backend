@@ -1,0 +1,404 @@
+package synamyk.service;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.stereotype.Service;
+import synamyk.dto.game.GameEvent;
+import synamyk.dto.game.JoinGameResponse;
+import synamyk.entities.*;
+import synamyk.enums.GameRoomStatus;
+import synamyk.exception.AppException;
+import synamyk.repo.*;
+
+import java.time.LocalDateTime;
+import java.util.*;
+import java.util.concurrent.*;
+import java.util.stream.Collectors;
+
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class GameService {
+
+    private static final Long BOT_ID = -1L;
+    private static final List<String> BOT_NAMES = List.of(
+            "Алтын", "Бекзат", "Нурлан", "Айгуль", "Дамир",
+            "Зарина", "Тимур", "Асель", "Адиль", "Гульнара"
+    );
+
+    private final SimpMessagingTemplate messaging;
+    private final GameTestRepository gameTestRepository;
+    private final GameQuestionRepository gameQuestionRepository;
+    private final GameAnswerOptionRepository gameAnswerOptionRepository;
+    private final GameRoomRepository gameRoomRepository;
+    private final GamePlayerResultRepository gamePlayerResultRepository;
+    private final UserRepository userRepository;
+
+    /** gameTestId -> roomId waiting for second player */
+    private final ConcurrentHashMap<Long, Long> waitingRooms = new ConcurrentHashMap<>();
+    /** gameTestId -> scheduled bot activation timer */
+    private final ConcurrentHashMap<Long, ScheduledFuture<?>> botTimers = new ConcurrentHashMap<>();
+    /** roomId -> bot display name (populated before startGame) */
+    private final ConcurrentHashMap<Long, String> botRoomNames = new ConcurrentHashMap<>();
+    /** roomId -> active game state */
+    private final ConcurrentHashMap<Long, ActiveGameState> activeGames = new ConcurrentHashMap<>();
+
+    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(10);
+
+    // ===== Public REST API =====
+
+    public synchronized JoinGameResponse joinGame(Long gameTestId, Long userId) {
+        GameTest gameTest = gameTestRepository.findById(gameTestId)
+                .orElseThrow(() -> new AppException("Игровой тест не найден.", "Оюн тести табылган жок."));
+        if (!gameTest.getActive())
+            throw new AppException("Игровой тест неактивен.", "Оюн тести активдүү эмес.");
+        if (gameQuestionRepository.countByGameTestIdAndActiveTrue(gameTestId) == 0)
+            throw new AppException("В игровом тесте нет вопросов.", "Оюн тестинде суроолор жок.");
+
+        Long waitingRoomId = waitingRooms.get(gameTestId);
+        if (waitingRoomId != null) {
+            Optional<GameRoom> roomOpt = gameRoomRepository.findById(waitingRoomId);
+            if (roomOpt.isPresent()) {
+                GameRoom room = roomOpt.get();
+                if (room.getStatus() == GameRoomStatus.WAITING && !room.getPlayer1Id().equals(userId)) {
+                    // Cancel bot timer — real player joined in time
+                    ScheduledFuture<?> timer = botTimers.remove(gameTestId);
+                    if (timer != null) timer.cancel(false);
+
+                    room.setPlayer2Id(userId);
+                    room.setStatus(GameRoomStatus.IN_PROGRESS);
+                    room.setStartedAt(LocalDateTime.now());
+                    gameRoomRepository.save(room);
+                    waitingRooms.remove(gameTestId);
+
+                    Long roomId = room.getId();
+                    scheduler.schedule(() -> startGame(roomId), 2, TimeUnit.SECONDS);
+
+                    return JoinGameResponse.builder()
+                            .status("MATCHED")
+                            .roomId(roomId)
+                            .message("Соперник найден! Игра начинается...")
+                            .build();
+                }
+            }
+            // Stale entry — clean up
+            waitingRooms.remove(gameTestId);
+            ScheduledFuture<?> stale = botTimers.remove(gameTestId);
+            if (stale != null) stale.cancel(false);
+        }
+
+        // No opponent — create waiting room
+        GameRoom room = new GameRoom();
+        room.setGameTest(gameTest);
+        room.setPlayer1Id(userId);
+        room.setStatus(GameRoomStatus.WAITING);
+        room = gameRoomRepository.save(room);
+        Long roomId = room.getId();
+        waitingRooms.put(gameTestId, roomId);
+
+        // Schedule bot activation after 15 seconds
+        ScheduledFuture<?> botTimer = scheduler.schedule(
+                () -> activateBot(roomId, gameTestId), 15, TimeUnit.SECONDS);
+        botTimers.put(gameTestId, botTimer);
+
+        return JoinGameResponse.builder()
+                .status("WAITING")
+                .roomId(roomId)
+                .message("Ожидание соперника...")
+                .build();
+    }
+
+    public synchronized void leaveQueue(Long gameTestId, Long userId) {
+        Long roomId = waitingRooms.get(gameTestId);
+        if (roomId == null) return;
+        gameRoomRepository.findById(roomId).ifPresent(room -> {
+            if (room.getPlayer1Id().equals(userId) && room.getStatus() == GameRoomStatus.WAITING) {
+                room.setStatus(GameRoomStatus.ABANDONED);
+                gameRoomRepository.save(room);
+                waitingRooms.remove(gameTestId);
+                ScheduledFuture<?> timer = botTimers.remove(gameTestId);
+                if (timer != null) timer.cancel(false);
+            }
+        });
+    }
+
+    // ===== WebSocket — answer submission =====
+
+    public void submitAnswer(Long roomId, Long userId, Long optionId) {
+        ActiveGameState state = activeGames.get(roomId);
+        if (state == null) {
+            log.warn("submitAnswer: room {} not active", roomId);
+            return;
+        }
+        synchronized (state.lock) {
+            if (state.currentAnswers.containsKey(userId)) return;
+
+            GameAnswerOption option = gameAnswerOptionRepository.findById(optionId).orElse(null);
+            if (option == null) return;
+
+            boolean correct = Boolean.TRUE.equals(option.getCorrect());
+            state.currentAnswers.put(userId, optionId);
+
+            if (correct) {
+                if (userId.equals(state.player1Id)) state.player1Score++;
+                else state.player2Score++;
+            }
+
+            // Only send answer result to real players
+            if (!userId.equals(BOT_ID)) {
+                GameEvent ack = GameEvent.builder()
+                        .type("ANSWER_RESULT")
+                        .roomId(roomId)
+                        .correct(correct)
+                        .player1Score(state.player1Score)
+                        .player2Score(state.player2Score)
+                        .build();
+                messaging.convertAndSend("/topic/game/" + roomId + "/answers/" + userId, ack);
+            }
+
+            // Both answered → advance
+            if (state.currentAnswers.size() == 2) {
+                if (state.questionTimer != null) state.questionTimer.cancel(false);
+                scheduler.schedule(() -> advanceQuestion(state), 1500, TimeUnit.MILLISECONDS);
+            }
+        }
+    }
+
+    public List<GameTestSummary> listActiveGameTests() {
+        return gameTestRepository.findByActiveTrue().stream()
+                .map(t -> new GameTestSummary(
+                        t.getId(), t.getTitle(), t.getDescription(),
+                        t.getTimeLimitSeconds(), t.getQuestionsPerGame(),
+                        gameQuestionRepository.countByGameTestIdAndActiveTrue(t.getId())))
+                .collect(Collectors.toList());
+    }
+
+    // ===== Bot activation (runs after 15s if no real opponent) =====
+
+    private void activateBot(Long roomId, Long gameTestId) {
+        try {
+            GameRoom room = gameRoomRepository.findById(roomId).orElse(null);
+            if (room == null || room.getStatus() != GameRoomStatus.WAITING) return;
+
+            waitingRooms.remove(gameTestId);
+            botTimers.remove(gameTestId);
+
+            // Pick a random bot name
+            String botName = BOT_NAMES.get(new Random().nextInt(BOT_NAMES.size()));
+            botRoomNames.put(roomId, botName);
+
+            room.setPlayer2Id(BOT_ID);
+            room.setStatus(GameRoomStatus.IN_PROGRESS);
+            room.setStartedAt(LocalDateTime.now());
+            gameRoomRepository.save(room);
+
+            log.debug("Bot '{}' activated for room {}", botName, roomId);
+            scheduler.schedule(() -> startGame(roomId), 500, TimeUnit.MILLISECONDS);
+        } catch (Exception e) {
+            log.error("activateBot error for room {}: {}", roomId, e.getMessage(), e);
+        }
+    }
+
+    // ===== Game lifecycle =====
+
+    private void startGame(Long roomId) {
+        try {
+            GameRoom room = gameRoomRepository.findById(roomId).orElseThrow();
+            List<GameQuestion> questions = new ArrayList<>(
+                    gameQuestionRepository.findByGameTestIdAndActiveTrue(room.getGameTest().getId()));
+            Collections.shuffle(questions);
+
+            int limit = room.getGameTest().getQuestionsPerGame();
+            if (limit > 0 && limit < questions.size()) {
+                questions = questions.subList(0, limit);
+            }
+
+            User p1 = userRepository.findById(room.getPlayer1Id()).orElseThrow();
+            boolean isBotGame = BOT_ID.equals(room.getPlayer2Id());
+            String p2Name = isBotGame
+                    ? botRoomNames.getOrDefault(roomId, "Соперник")
+                    : displayName(userRepository.findById(room.getPlayer2Id()).orElseThrow());
+            String p2Avatar = isBotGame ? null
+                    : userRepository.findById(room.getPlayer2Id()).map(User::getAvatarUrl).orElse(null);
+
+            ActiveGameState state = new ActiveGameState();
+            state.roomId = roomId;
+            state.gameTestId = room.getGameTest().getId();
+            state.player1Id = room.getPlayer1Id();
+            state.player2Id = room.getPlayer2Id();
+            state.questions = questions;
+            state.timeLimitSeconds = room.getGameTest().getTimeLimitSeconds();
+            state.isBotGame = isBotGame;
+            activeGames.put(roomId, state);
+
+            GameEvent started = GameEvent.builder()
+                    .type("GAME_STARTED")
+                    .roomId(roomId)
+                    .player1Id(p1.getId())
+                    .player2Id(isBotGame ? BOT_ID : room.getPlayer2Id())
+                    .player1Name(displayName(p1))
+                    .player2Name(p2Name)
+                    .player1Avatar(p1.getAvatarUrl())
+                    .player2Avatar(p2Avatar)
+                    .player1Score(0)
+                    .player2Score(0)
+                    .build();
+            messaging.convertAndSend("/topic/game/" + roomId, started);
+
+            scheduler.schedule(() -> sendNextQuestion(state), 500, TimeUnit.MILLISECONDS);
+        } catch (Exception e) {
+            log.error("startGame error for room {}: {}", roomId, e.getMessage(), e);
+        }
+    }
+
+    private void sendNextQuestion(ActiveGameState state) {
+        synchronized (state.lock) {
+            if (state.currentQuestionIndex >= state.questions.size()) {
+                finishGame(state);
+                return;
+            }
+
+            GameQuestion q = state.questions.get(state.currentQuestionIndex);
+            state.currentAnswers.clear();
+
+            List<GameEvent.OptionPayload> options = q.getOptions().stream()
+                    .map(o -> new GameEvent.OptionPayload(o.getId(), o.getText()))
+                    .collect(Collectors.toList());
+
+            GameEvent event = GameEvent.builder()
+                    .type("NEXT_QUESTION")
+                    .roomId(state.roomId)
+                    .questionIndex(state.currentQuestionIndex)
+                    .totalQuestions(state.questions.size())
+                    .timeLimitSeconds(state.timeLimitSeconds)
+                    .question(GameEvent.QuestionPayload.builder()
+                            .id(q.getId())
+                            .text(q.getText())
+                            .imageUrl(q.getImageUrl())
+                            .options(options)
+                            .build())
+                    .player1Score(state.player1Score)
+                    .player2Score(state.player2Score)
+                    .build();
+            messaging.convertAndSend("/topic/game/" + state.roomId, event);
+
+            // Auto-advance timer when nobody answers
+            state.questionTimer = scheduler.schedule(
+                    () -> advanceQuestion(state), state.timeLimitSeconds, TimeUnit.SECONDS);
+
+            // Schedule bot answer (2–8 seconds, 55% chance correct)
+            if (state.isBotGame) {
+                int botDelay = 2 + new Random().nextInt(7);
+                GameQuestion question = q;
+                scheduler.schedule(() -> submitBotAnswer(state, question), botDelay, TimeUnit.SECONDS);
+            }
+        }
+    }
+
+    private void submitBotAnswer(ActiveGameState state, GameQuestion q) {
+        boolean answerCorrectly = Math.random() < 0.55;
+        Long optionId;
+        if (answerCorrectly) {
+            optionId = q.getOptions().stream()
+                    .filter(o -> Boolean.TRUE.equals(o.getCorrect()))
+                    .findFirst()
+                    .map(GameAnswerOption::getId)
+                    .orElse(q.getOptions().get(0).getId());
+        } else {
+            List<GameAnswerOption> wrong = q.getOptions().stream()
+                    .filter(o -> !Boolean.TRUE.equals(o.getCorrect()))
+                    .collect(Collectors.toList());
+            optionId = wrong.isEmpty()
+                    ? q.getOptions().get(0).getId()
+                    : wrong.get(new Random().nextInt(wrong.size())).getId();
+        }
+        submitAnswer(state.roomId, BOT_ID, optionId);
+    }
+
+    private void advanceQuestion(ActiveGameState state) {
+        synchronized (state.lock) {
+            state.currentQuestionIndex++;
+            if (state.currentQuestionIndex >= state.questions.size()) {
+                finishGame(state);
+            } else {
+                sendNextQuestion(state);
+            }
+        }
+    }
+
+    private void finishGame(ActiveGameState state) {
+        activeGames.remove(state.roomId);
+        botRoomNames.remove(state.roomId);
+        try {
+            GameRoom room = gameRoomRepository.findById(state.roomId).orElseThrow();
+            room.setStatus(GameRoomStatus.FINISHED);
+            room.setFinishedAt(LocalDateTime.now());
+            room.setPlayer1Score(state.player1Score);
+            room.setPlayer2Score(state.player2Score);
+            gameRoomRepository.save(room);
+
+            int total = state.questions.size();
+            boolean p1Won = state.player1Score > state.player2Score;
+            boolean p2Won = state.player2Score > state.player1Score;
+
+            // Save result only for real player
+            saveResult(state.player1Id, state.gameTestId, state.roomId, state.player1Score, total, p1Won);
+            if (!state.isBotGame) {
+                saveResult(state.player2Id, state.gameTestId, state.roomId, state.player2Score, total, p2Won);
+            }
+
+            Long winnerId = p1Won ? state.player1Id : p2Won ? state.player2Id : null;
+            GameEvent gameOver = GameEvent.builder()
+                    .type("GAME_OVER")
+                    .roomId(state.roomId)
+                    .player1Score(state.player1Score)
+                    .player2Score(state.player2Score)
+                    .winnerId(winnerId)
+                    .build();
+            messaging.convertAndSend("/topic/game/" + state.roomId, gameOver);
+        } catch (Exception e) {
+            log.error("finishGame error for room {}: {}", state.roomId, e.getMessage(), e);
+        }
+    }
+
+    private void saveResult(Long userId, Long gameTestId, Long roomId, int score, int total, boolean won) {
+        GamePlayerResult result = new GamePlayerResult();
+        result.setUserId(userId);
+        result.setGameTestId(gameTestId);
+        result.setRoomId(roomId);
+        result.setScore(score);
+        result.setTotalQuestions(total);
+        result.setWon(won);
+        gamePlayerResultRepository.save(result);
+    }
+
+    private String displayName(User u) {
+        if (u.getFirstName() != null) {
+            return u.getFirstName() + (u.getLastName() != null ? " " + u.getLastName() : "");
+        }
+        return u.getPhone();
+    }
+
+    // ===== Inner state class =====
+
+    private static class ActiveGameState {
+        Long roomId;
+        Long gameTestId;
+        Long player1Id;
+        Long player2Id;
+        List<GameQuestion> questions;
+        int timeLimitSeconds;
+        boolean isBotGame;
+        volatile int currentQuestionIndex = 0;
+        volatile int player1Score = 0;
+        volatile int player2Score = 0;
+        final Map<Long, Long> currentAnswers = new ConcurrentHashMap<>();
+        volatile ScheduledFuture<?> questionTimer;
+        final Object lock = new Object();
+    }
+
+    public record GameTestSummary(Long id, String title, String description,
+                                   Integer timeLimitSeconds, Integer questionsPerGame,
+                                   long questionCount) {}
+}
