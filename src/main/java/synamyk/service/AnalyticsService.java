@@ -61,7 +61,7 @@ public class AnalyticsService {
         List<Object[]> rawPoints = sessionRepository.findDailyScores(userId, testId, currentFrom, now);
         Map<LocalDate, Long> scoreByDate = new HashMap<>();
         for (Object[] row : rawPoints) {
-            LocalDate date = ((Date) row[0]).toLocalDate();
+            LocalDate date = row[0] instanceof LocalDate ld ? ld : ((Date) row[0]).toLocalDate();
             long score = ((Number) row[1]).longValue();
             scoreByDate.put(date, score);
         }
