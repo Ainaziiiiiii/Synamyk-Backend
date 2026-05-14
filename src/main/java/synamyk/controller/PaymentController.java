@@ -49,9 +49,4 @@ public class PaymentController {
         return ResponseEntity.ok(paymentService.initPayment(user.getId(), testId));
     }
 
-    @GetMapping("/{paymentId}")
-    @Operation(summary = "Проверка статуса платежа")
-    public ResponseEntity<CreatePaymentResponse> getPaymentStatus(@PathVariable String paymentId) {
-        return ResponseEntity.ok(paymentService.getPaymentStatus(UUID.fromString(paymentId)));
-    }
 }

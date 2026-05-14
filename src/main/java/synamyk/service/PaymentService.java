@@ -72,7 +72,6 @@ public class PaymentService {
 
         return InitPaymentResponse.builder()
                 .paymentId(paymentId)
-                .accountId(finikConfig.getAccountId())
                 .amount(test.getPrice())
                 .nameEn(truncate(test.getTitle(), 50))
                 .callbackUrl(finikConfig.getWebhookUrl())
